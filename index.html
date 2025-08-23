@@ -295,7 +295,7 @@
             <div class="form-section">
                 <div class="form-group">
                     <label>Тип операции</label>
-                    <select id="type">
+                    <select id="type" onchange="updateCategories()">
                         <option value="expense">Расход</option>
                         <option value="income">Доход</option>
                     </select>
@@ -309,21 +309,7 @@
                 <div class="form-group">
                     <label>Категория</label>
                     <select id="category">
-                        <optgroup label="Расходы">
-                            <option value="food">🍕 Еда</option>
-                            <option value="transport">🚗 Транспорт</option>
-                            <option value="shopping">🛒 Покупки</option>
-                            <option value="entertainment">🎬 Развлечения</option>
-                            <option value="health">💊 Здоровье</option>
-                            <option value="bills">📄 Счета</option>
-                            <option value="other-expense">📦 Прочее</option>
-                        </optgroup>
-                        <optgroup label="Доходы">
-                            <option value="salary">💰 Зарплата</option>
-                            <option value="freelance">💻 Фриланс</option>
-                            <option value="gift">🎁 Подарок</option>
-                            <option value="other-income">💵 Прочее</option>
-                        </optgroup>
+                        <!-- Категории будут загружаться динамически -->
                     </select>
                 </div>
 
@@ -360,7 +346,12 @@
 
             <div class="category-stats">
                 <h3 style="margin-bottom: 16px;">Расходы по категориям</h3>
-                <div id="category-breakdown"></div>
+                <div id="expense-breakdown"></div>
+            </div>
+
+            <div class="category-stats" style="margin-top: 16px;">
+                <h3 style="margin-bottom: 16px;">Доходы по категориям</h3>
+                <div id="income-breakdown"></div>
             </div>
         </div>
     </div>
@@ -376,19 +367,53 @@
         let isLoading = false;
 
         // Категории с эмодзи
-        const categories = {
+        const expenseCategories = {
             'food': '🍕 Еда',
             'transport': '🚗 Транспорт', 
             'shopping': '🛒 Покупки',
             'entertainment': '🎬 Развлечения',
             'health': '💊 Здоровье',
             'bills': '📄 Счета',
+            'education': '📚 Образование',
+            'sport': '⚽ Спорт',
+            'beauty': '💄 Красота',
+            'home': '🏠 Дом',
+            'other-expense': '📦 Прочее'
+        };
+
+        const incomeCategories = {
             'salary': '💰 Зарплата',
             'freelance': '💻 Фриланс',
+            'business': '🏢 Бизнес',
+            'investment': '📈 Инвестиции',
             'gift': '🎁 Подарок',
-            'other-income': '💵 Прочее доход',
-            'other-expense': '📦 Прочее расход'
+            'bonus': '🎯 Премия',
+            'sale': '💸 Продажа',
+            'refund': '↩️ Возврат',
+            'other-income': '💵 Прочее'
         };
+
+        const allCategories = {...expenseCategories, ...incomeCategories};
+
+        // Обновление категорий в зависимости от типа операции
+        function updateCategories() {
+            const type = document.getElementById('type').value;
+            const categorySelect = document.getElementById('category');
+            
+            // Очищаем список категорий
+            categorySelect.innerHTML = '';
+            
+            // Выбираем нужные категории
+            const categories = type === 'expense' ? expenseCategories : incomeCategories;
+            
+            // Добавляем опции
+            Object.entries(categories).forEach(([value, label]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                categorySelect.appendChild(option);
+            });
+        }
 
         // Переключение табов
         function showTab(tabName) {
@@ -588,7 +613,7 @@
 
             const transactionsHTML = transactions.map(transaction => {
                 const date = new Date(transaction.date).toLocaleDateString('ru-RU');
-                const categoryName = categories[transaction.category] || transaction.category;
+                const categoryName = allCategories[transaction.category] || transaction.category;
                 
                 return `
                     <div class="transaction-item">
@@ -656,17 +681,37 @@
                     expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
                 });
 
-            const categoryHTML = Object.entries(expensesByCategory)
+            const expenseHTML = Object.entries(expensesByCategory)
                 .sort(([,a], [,b]) => b - a)
                 .map(([category, amount]) => `
                     <div class="category-item">
-                        <span>${categories[category] || category}</span>
+                        <span>${allCategories[category] || category}</span>
                         <span>${formatCurrency(amount)}</span>
                     </div>
                 `).join('');
 
-            document.getElementById('category-breakdown').innerHTML = 
-                categoryHTML || '<div class="empty-state">Расходов пока нет</div>';
+            document.getElementById('expense-breakdown').innerHTML = 
+                expenseHTML || '<div class="empty-state">Расходов пока нет</div>';
+
+            // Статистика по категориям доходов
+            const incomesByCategory = {};
+            transactions
+                .filter(t => t.type === 'income')
+                .forEach(t => {
+                    incomesByCategory[t.category] = (incomesByCategory[t.category] || 0) + t.amount;
+                });
+
+            const incomeHTML = Object.entries(incomesByCategory)
+                .sort(([,a], [,b]) => b - a)
+                .map(([category, amount]) => `
+                    <div class="category-item">
+                        <span>${allCategories[category] || category}</span>
+                        <span style="color: #4CAF50;">${formatCurrency(amount)}</span>
+                    </div>
+                `).join('');
+
+            document.getElementById('income-breakdown').innerHTML = 
+                incomeHTML || '<div class="empty-state">Доходов пока нет</div>';
         }
 
         // Показать статус синхронизации
@@ -693,6 +738,9 @@
             
             // Обновляем интерфейс
             updateBalance();
+            
+            // Инициализируем категории
+            updateCategories();
             
             // Настройка цветовой темы
             document.documentElement.style.setProperty('--tg-color-scheme', tg.colorScheme);
