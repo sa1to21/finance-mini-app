@@ -26,6 +26,7 @@
             max-width: 100%;
             padding: 16px;
             min-height: 100vh;
+            padding-bottom: 80px; /* Отступ для фиксированного меню */
         }
 
         /* Велком страница */
@@ -52,9 +53,10 @@
 
         .welcome-subtitle {
             font-size: 16px;
-            color: var(--tg-theme-hint-color, #999);
+            color: rgba(255, 255, 255, 0.8); /* Исправлено для лучшей видимости */
             margin-bottom: 32px;
             max-width: 300px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3); /* Добавлена тень для читаемости */
         }
 
         .welcome-features {
@@ -139,30 +141,47 @@
             border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
         }
 
-        .tabs {
-            display: flex;
+        /* Фиксированное нижнее меню */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             background: var(--tg-theme-section-bg-color, #1a1a2e);
-            border-radius: 12px;
-            padding: 4px;
-            margin-bottom: 24px;
-            overflow-x: auto;
+            border-top: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+            display: flex;
+            padding: 8px 0;
+            z-index: 1000;
         }
 
-        .tab {
+        .nav-item {
             flex: 1;
-            padding: 12px;
-            text-align: center;
-            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
             cursor: pointer;
             transition: all 0.3s;
-            font-weight: 500;
-            white-space: nowrap;
-            min-width: 80px;
+            text-decoration: none;
+            color: var(--tg-theme-hint-color, #999);
         }
 
-        .tab.active {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
+        .nav-item.active {
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
         }
 
         .form-section {
@@ -468,6 +487,14 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .nav-label {
+                font-size: 10px;
+            }
+
+            .nav-icon {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
@@ -513,14 +540,6 @@
                 <div class="accounts-summary" id="accounts-summary"></div>
             </div>
 
-            <!-- Табы -->
-            <div class="tabs">
-                <div class="tab active" onclick="showTab('add')">Добавить</div>
-                <div class="tab" onclick="showTab('history')">История</div>
-                <div class="tab" onclick="showTab('accounts')">Счета</div>
-                <div class="tab" onclick="showTab('stats')">Статистика</div>
-            </div>
-
             <!-- Форма добавления -->
             <div id="add-tab" class="tab-content">
                 <div class="form-section">
@@ -541,7 +560,7 @@
                     <div id="category-group" class="form-group">
                         <label>Категория</label>
                         <select id="category">
-                            <!-- Категории будут загружаться динамически -->
+                            <option value="">Выберите категорию</option>
                         </select>
                     </div>
 
@@ -557,7 +576,9 @@
 
                     <div id="account-group" class="form-group">
                         <label>Счёт</label>
-                        <select id="account"></select>
+                        <select id="account">
+                            <option value="">Выберите счёт</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -595,7 +616,7 @@
                             <option value="all">Все счета</option>
                         </select>
                     </div>
-                    <button class="btn secondary clear-filters" onclick="clearFilters()">Сбросить фильтры</button>
+                    <button class="btn secondary clear-filters" onclick="clearFilters()">Очистить фильтры</button>
                 </div>
                 
                 <div class="transaction-list" id="transaction-list">
@@ -618,12 +639,12 @@
                     <div class="form-group">
                         <label>Иконка</label>
                         <select id="new-account-icon">
-                            <option value="💵">💵 Наличные</option>
-                            <option value="💳">💳 Карта</option>
-                            <option value="🏦">🏦 Банковский счёт</option>
-                            <option value="📊">📊 Инвестиции</option>
-                            <option value="🐷">🐷 Копилка</option>
-                            <option value="💰">💰 Сбережения</option>
+                            <option value="💵">💵</option>
+                            <option value="💳">💳</option>
+                            <option value="🏦">🏦</option>
+                            <option value="📊">📊</option>
+                            <option value="🐷">🐷</option>
+                            <option value="💰">💰</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -663,6 +684,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Фиксированное нижнее меню -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="showTab('add')">
+                <div class="nav-icon">➕</div>
+                <div class="nav-label">Добавить</div>
+            </div>
+            <div class="nav-item" onclick="showTab('history')">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">История</div>
+            </div>
+            <div class="nav-item" onclick="showTab('accounts')">
+                <div class="nav-icon">💳</div>
+                <div class="nav-label">Счета</div>
+            </div>
+            <div class="nav-item" onclick="showTab('stats')">
+                <div class="nav-icon">📊</div>
+                <div class="nav-label">Статистика</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -693,7 +734,7 @@
 
         const incomeCategories = {
             'salary': '💰 Зарплата',
-            'freelance': '💻 Фриланс',
+            'freelance': '💻 Фрилансе',
             'business': '🏢 Бизнес',
             'investment': '📈 Инвестиции',
             'gift': '🎁 Подарок',
@@ -880,7 +921,7 @@
                 toAccountGroup.classList.add('hidden');
                 accountGroup.classList.remove('hidden');
                 
-                categorySelect.innerHTML = '';
+                categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
                 const categories = type === 'expense' ? expenseCategories : incomeCategories;
                 
                 Object.entries(categories).forEach(([value, label]) => {
@@ -897,7 +938,7 @@
         // Обновление списков счетов
         function updateAccountSelect() {
             const accountSelect = document.getElementById('account');
-            accountSelect.innerHTML = '';
+            accountSelect.innerHTML = '<option value="">Выберите счёт</option>';
             
             accounts.forEach(account => {
                 const option = document.createElement('option');
@@ -928,12 +969,12 @@
                 tab.classList.add('hidden');
             });
             
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
             });
             
             document.getElementById(tabName + '-tab').classList.remove('hidden');
-            event.target.classList.add('active');
+            event.target.closest('.nav-item').classList.add('active');
             
             if (tabName === 'history') {
                 updateFilters();
@@ -1007,6 +1048,25 @@
             } else {
                 const category = document.getElementById('category').value;
                 const accountId = document.getElementById('account').value;
+                
+                if (!category) {
+                    if (tg.showAlert) {
+                        tg.showAlert('Выберите категорию');
+                    } else {
+                        alert('Выберите категорию');
+                    }
+                    return;
+                }
+                
+                if (!accountId) {
+                    if (tg.showAlert) {
+                        tg.showAlert('Выберите счёт');
+                    } else {
+                        alert('Выберите счёт');
+                    }
+                    return;
+                }
+                
                 const account = accounts.find(a => a.id === accountId);
 
                 const transaction = {
