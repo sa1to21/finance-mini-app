@@ -234,6 +234,29 @@
             border-radius: 4px;
         }
 
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sync-status.show {
+            opacity: 1;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 12px;
@@ -251,6 +274,9 @@
 </head>
 <body>
     <div class="container">
+        <!-- Индикатор синхронизации -->
+        <div class="sync-status" id="sync-status">☁️ Синхронизация</div>
+
         <!-- Заголовок с балансом -->
         <div class="header">
             <h1>Мои финансы</h1>
@@ -346,7 +372,8 @@
         tg.ready();
 
         // Данные приложения
-        let transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+        let transactions = [];
+        let isLoading = false;
 
         // Категории с эмодзи
         const categories = {
@@ -421,6 +448,7 @@
             saveTransactions();
             updateBalance();
             clearForm();
+            showSyncStatus();
 
             // Haptic feedback
             if (tg.HapticFeedback) {
@@ -433,9 +461,97 @@
             }
         }
 
-        // Сохранение в localStorage
+        // Telegram Cloud Storage функции
+        function saveToCloud() {
+            if (isLoading) return;
+            
+            try {
+                const data = JSON.stringify(transactions);
+                const chunks = [];
+                const chunkSize = 1000; // Telegram позволяет до 1024 символов
+                
+                // Разбиваем данные на чунки если они большие
+                for (let i = 0; i < data.length; i += chunkSize) {
+                    chunks.push(data.slice(i, i + chunkSize));
+                }
+                
+                // Сохраняем количество чунков
+                tg.CloudStorage.setItem('chunks_count', chunks.length.toString());
+                
+                // Сохраняем каждый чунк
+                chunks.forEach((chunk, index) => {
+                    tg.CloudStorage.setItem(`transactions_${index}`, chunk);
+                });
+                
+                console.log('Данные сохранены в Telegram Cloud');
+            } catch (error) {
+                console.error('Ошибка сохранения в Cloud:', error);
+                // Fallback на localStorage
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+            }
+        }
+
+        function loadFromCloud() {
+            return new Promise((resolve) => {
+                if (!tg.CloudStorage) {
+                    // Fallback на localStorage если Cloud Storage недоступен
+                    const localData = localStorage.getItem('transactions');
+                    transactions = JSON.parse(localData || '[]');
+                    resolve();
+                    return;
+                }
+
+                isLoading = true;
+                
+                tg.CloudStorage.getItem('chunks_count', (error, chunksCount) => {
+                    if (error || !chunksCount) {
+                        console.log('Нет данных в Cloud Storage, проверяем localStorage');
+                        // Пытаемся загрузить из localStorage для миграции
+                        const localData = localStorage.getItem('transactions');
+                        transactions = JSON.parse(localData || '[]');
+                        isLoading = false;
+                        resolve();
+                        return;
+                    }
+
+                    const count = parseInt(chunksCount);
+                    let loadedChunks = [];
+                    let loadedCount = 0;
+
+                    // Загружаем все чунки
+                    for (let i = 0; i < count; i++) {
+                        tg.CloudStorage.getItem(`transactions_${i}`, (error, chunk) => {
+                            if (!error && chunk) {
+                                loadedChunks[i] = chunk;
+                            }
+                            loadedCount++;
+                            
+                            // Когда все чунки загружены
+                            if (loadedCount === count) {
+                                try {
+                                    const fullData = loadedChunks.join('');
+                                    transactions = JSON.parse(fullData || '[]');
+                                    console.log('Данные загружены из Telegram Cloud');
+                                } catch (parseError) {
+                                    console.error('Ошибка парсинга данных:', parseError);
+                                    transactions = [];
+                                }
+                                isLoading = false;
+                                updateBalance();
+                                resolve();
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        // Сохранение в localStorage (fallback) + Cloud
         function saveTransactions() {
+            // Сохраняем локально для быстродействия
             localStorage.setItem('transactions', JSON.stringify(transactions));
+            // Сохраняем в облако для синхронизации
+            saveToCloud();
         }
 
         // Очистка формы
@@ -501,6 +617,7 @@
                         saveTransactions();
                         updateBalance();
                         displayTransactions();
+                        showSyncStatus();
                         
                         if (tg.HapticFeedback) {
                             tg.HapticFeedback.notificationOccurred('success');
@@ -513,6 +630,7 @@
                     saveTransactions();
                     updateBalance();
                     displayTransactions();
+                    showSyncStatus();
                 }
             }
         }
@@ -551,17 +669,35 @@
                 categoryHTML || '<div class="empty-state">Расходов пока нет</div>';
         }
 
+        // Показать статус синхронизации
+        function showSyncStatus() {
+            const status = document.getElementById('sync-status');
+            status.classList.add('show');
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 2000);
+        }
+
         // Форматирование валюты
         function formatCurrency(amount) {
             return new Intl.NumberFormat('ru-RU').format(amount) + ' ₽';
         }
 
         // Инициализация приложения
-        function init() {
+        async function init() {
+            // Показываем индикатор загрузки
+            document.getElementById('balance').textContent = 'Загрузка...';
+            
+            // Загружаем данные из облака
+            await loadFromCloud();
+            
+            // Обновляем интерфейс
             updateBalance();
             
             // Настройка цветовой темы
             document.documentElement.style.setProperty('--tg-color-scheme', tg.colorScheme);
+            
+            console.log('Приложение инициализировано');
         }
 
         // Запуск приложения
