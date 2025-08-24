@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tg.expand();
     tg.ready();
     
-    // Дополнительная попытка раскрытия через некоторое время
+    // Дополнительная попытка раскрыть через некоторое время
     setTimeout(() => {
         if (tg.expand) {
             tg.expand();
@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let accounts = [];
     let isLoading = false;
     let editingTransactionId = null;
+    let editingAccountId = null;
 
     // Категории с эмодзи
     const expenseCategories = {
@@ -306,6 +307,31 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         updateEditAccountSelect();
+    }
+
+    // Обновление фильтра периода
+    window.updatePeriodFilter = function() {
+        const periodFilter = document.getElementById('period-filter');
+        const customDateRange = document.getElementById('custom-date-range');
+        const startDate = document.getElementById('start-date');
+        const endDate = document.getElementById('end-date');
+        
+        if (periodFilter.value === 'custom') {
+            customDateRange.classList.remove('hidden');
+            // Устанавливаем текущую дату по умолчанию
+            if (!startDate.value) {
+                const today = new Date().toISOString().split('T')[0];
+                endDate.value = today;
+                // Начальная дата - месяц назад
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                startDate.value = monthAgo.toISOString().split('T')[0];
+            }
+        } else {
+            customDateRange.classList.add('hidden');
+        }
+        
+        applyFilters();
     }
 
     // Обновление списков счетов
@@ -702,6 +728,101 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Редактирование счета
+    window.editAccount = function(accountId) {
+        const account = accounts.find(a => a.id === accountId);
+        if (!account) return;
+
+        editingAccountId = accountId;
+
+        // Заполняем форму редактирования
+        document.getElementById('edit-account-name').value = account.name;
+        document.getElementById('edit-account-icon').value = account.icon;
+        document.getElementById('account-balance-correction').value = '';
+
+        document.getElementById('edit-account-modal').classList.remove('hidden');
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    }
+
+    window.closeEditAccountModal = function() {
+        document.getElementById('edit-account-modal').classList.add('hidden');
+        editingAccountId = null;
+    }
+
+    window.saveEditAccount = function() {
+        if (!editingAccountId) return;
+
+        const account = accounts.find(a => a.id === editingAccountId);
+        if (!account) return;
+
+        const newName = document.getElementById('edit-account-name').value.trim();
+        const newIcon = document.getElementById('edit-account-icon').value;
+        const balanceCorrection = parseFloat(document.getElementById('account-balance-correction').value) || 0;
+
+        if (!newName) {
+            if (tg.showAlert) {
+                tg.showAlert('Введите название счёта');
+            } else {
+                alert('Введите название счёта');
+            }
+            return;
+        }
+
+        const oldName = account.name;
+        const oldIcon = account.icon;
+
+        // Обновляем данные счета
+        account.name = newName;
+        account.icon = newIcon;
+        account.balance += balanceCorrection;
+
+        // Если была корректировка баланса, создаем транзакцию
+        if (balanceCorrection !== 0) {
+            const transaction = {
+                id: Date.now(),
+                type: balanceCorrection > 0 ? 'income' : 'expense',
+                amount: Math.abs(balanceCorrection),
+                category: balanceCorrection > 0 ? 'other-income' : 'other-expense',
+                account: editingAccountId,
+                description: `Корректировка баланса счёта "${newName}" (было: ${oldName})`,
+                date: new Date().toISOString()
+            };
+            transactions.unshift(transaction);
+        }
+
+        // Если изменилось название или иконка, создаем запись об изменении
+        if (oldName !== newName || oldIcon !== newIcon) {
+            const transaction = {
+                id: Date.now() + 1, // +1 чтобы избежать дублирования ID
+                type: 'account-edit',
+                amount: 0,
+                account: editingAccountId,
+                description: `Изменение счёта: "${oldName}" ${oldIcon} → "${newName}" ${newIcon}`,
+                date: new Date().toISOString()
+            };
+            transactions.unshift(transaction);
+        }
+
+        saveData();
+        updateAllBalances();
+        displayAccounts();
+        updateAccountSelect();
+        updateFilters();
+        closeEditAccountModal();
+        showSyncStatus();
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        if (tg.showAlert) {
+            tg.showAlert('Счёт обновлен!');
+        }
+    }
+
     // Очистка формы
     function clearForm() {
         document.getElementById('amount').value = '';
@@ -779,26 +900,46 @@ document.addEventListener("DOMContentLoaded", () => {
         // Фильтр по периоду
         if (periodFilter.value !== 'all') {
             const now = new Date();
-            let startDate = new Date();
+            let startDate, endDate;
             
-            switch (periodFilter.value) {
-                case 'today':
-                    startDate.setHours(0, 0, 0, 0);
-                    break;
-                case 'week':
-                    startDate.setDate(now.getDate() - 7);
-                    break;
-                case 'month':
-                    startDate.setMonth(now.getMonth() - 1);
-                    break;
-                case 'quarter':
-                    startDate.setMonth(now.getMonth() - 3);
-                    break;
+            if (periodFilter.value === 'custom') {
+                const startInput = document.getElementById('start-date');
+                const endInput = document.getElementById('end-date');
+                
+                if (startInput.value && endInput.value) {
+                    startDate = new Date(startInput.value);
+                    endDate = new Date(endInput.value);
+                    endDate.setHours(23, 59, 59, 999); // Включаем весь день
+                }
+            } else {
+                startDate = new Date();
+                switch (periodFilter.value) {
+                    case 'today':
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate = new Date();
+                        endDate.setHours(23, 59, 59, 999);
+                        break;
+                    case 'week':
+                        startDate.setDate(now.getDate() - 7);
+                        endDate = now;
+                        break;
+                    case 'month':
+                        startDate.setMonth(now.getMonth() - 1);
+                        endDate = now;
+                        break;
+                    case 'quarter':
+                        startDate.setMonth(now.getMonth() - 3);
+                        endDate = now;
+                        break;
+                }
             }
             
-            filteredTransactions = filteredTransactions.filter(t => 
-                new Date(t.date) >= startDate
-            );
+            if (startDate && endDate) {
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const transactionDate = new Date(t.date);
+                    return transactionDate >= startDate && transactionDate <= endDate;
+                });
+            }
         }
 
         // Остальные фильтры
@@ -838,27 +979,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
                 const toAccount = accounts.find(a => a.id === transaction.toAccount);
                 categoryName = `${fromAccount?.icon} → ${toAccount?.icon} Перевод`;
+            } else if (transaction.type === 'account-edit') {
+                categoryName = `⚙️ Изменение счёта`;
+                const account = accounts.find(a => a.id === transaction.account);
+                accountInfo = `<div class="transaction-account">${account?.icon} ${account?.name}</div>`;
             } else {
                 categoryName = allCategories[transaction.category] || transaction.category;
                 const account = accounts.find(a => a.id === transaction.account);
                 accountInfo = `<div class="transaction-account">${account?.icon} ${account?.name}</div>`;
             }
             
+            let amountDisplay = '';
+            let actionsHtml = '';
+            
+            if (transaction.type === 'account-edit') {
+                amountDisplay = '';
+                actionsHtml = ''; // Не показываем кнопки редактирования для служебных записей
+            } else {
+                amountDisplay = `${transaction.type === 'income' ? '+' : (transaction.type === 'transfer' ? '' : '-')}${formatCurrency(transaction.amount)}`;
+                actionsHtml = `
+                    <div class="transaction-actions">
+                        <button class="edit-btn" onclick="editTransaction(${transaction.id})" title="Редактировать">✏️</button>
+                        <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" title="Удалить">🗑️</button>
+                    </div>
+                `;
+            }
+            
             return `
                 <div class="transaction-item">
-                    <div class="transaction-info" onclick="editTransaction(${transaction.id})">
+                    <div class="transaction-info" ${transaction.type !== 'account-edit' ? `onclick="editTransaction(${transaction.id})"` : ''}>
                         <div class="transaction-category">${categoryName}</div>
                         <div class="transaction-date">${date}</div>
                         ${accountInfo}
                         ${transaction.description ? `<div style="font-size: 12px; color: var(--tg-theme-hint-color, #999);">${transaction.description}</div>` : ''}
                     </div>
                     <div class="transaction-amount ${transaction.type}">
-                        ${transaction.type === 'income' ? '+' : (transaction.type === 'transfer' ? '' : '-')}${formatCurrency(transaction.amount)}
+                        ${amountDisplay}
                     </div>
-                    <div class="transaction-actions">
-                        <button class="edit-btn" onclick="editTransaction(${transaction.id})" title="Редактировать">✏️</button>
-                        <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" title="Удалить">🗑️</button>
-                    </div>
+                    ${actionsHtml}
                 </div>
             `;
         }).join('');
@@ -872,11 +1030,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const categoryFilter = document.getElementById('category-filter');
         const typeFilter = document.getElementById('type-filter');
         const accountFilter = document.getElementById('account-filter');
+        const customDateRange = document.getElementById('custom-date-range');
 
         if (periodFilter) periodFilter.value = 'all';
         if (categoryFilter) categoryFilter.value = 'all';
         if (typeFilter) typeFilter.value = 'all';
         if (accountFilter) accountFilter.value = 'all';
+        if (customDateRange) customDateRange.classList.add('hidden');
         
         applyFilters();
     }
@@ -900,19 +1060,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const transaction = transactions.find(t => t.id === id);
         if (!transaction) return;
         
-        // Возвращаем изменения в балансах
-        if (transaction.type === 'transfer') {
-            const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
-            const toAccount = accounts.find(a => a.id === transaction.toAccount);
-            if (fromAccount) fromAccount.balance += transaction.amount;
-            if (toAccount) toAccount.balance -= transaction.amount;
-        } else {
-            const account = accounts.find(a => a.id === transaction.account);
-            if (account) {
-                if (transaction.type === 'income') {
-                    account.balance -= transaction.amount;
-                } else {
-                    account.balance += transaction.amount;
+        // Возвращаем изменения в балансах (только для реальных операций)
+        if (transaction.type !== 'account-edit') {
+            if (transaction.type === 'transfer') {
+                const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
+                const toAccount = accounts.find(a => a.id === transaction.toAccount);
+                if (fromAccount) fromAccount.balance += transaction.amount;
+                if (toAccount) toAccount.balance -= transaction.amount;
+            } else {
+                const account = accounts.find(a => a.id === transaction.account);
+                if (account) {
+                    if (transaction.type === 'income') {
+                        account.balance -= transaction.amount;
+                    } else {
+                        account.balance += transaction.amount;
+                    }
                 }
             }
         }
@@ -944,7 +1106,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
                     ${formatCurrency(account.balance)}
                 </div>
-                <button class="btn danger" style="margin-top: 12px;" onclick="deleteAccount('${account.id}')">Удалить счёт</button>
+                <div style="margin-top: 12px;">
+                    <button class="edit-account-btn" onclick="editAccount('${account.id}')">Редактировать</button>
+                    <button class="btn danger" onclick="deleteAccount('${account.id}')">Удалить счёт</button>
+                </div>
             </div>
         `).join('');
 
@@ -1143,7 +1308,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Добавляем обработчики для фильтров
     function setupFilterHandlers() {
         const filterElements = [
-            'period-filter', 'category-filter', 'type-filter', 'account-filter'
+            'period-filter', 'category-filter', 'type-filter', 'account-filter',
+            'start-date', 'end-date'
         ];
         
         filterElements.forEach(id => {
@@ -1152,6 +1318,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 element.addEventListener('change', applyFilters);
             }
         });
+
+        // Специальный обработчик для фильтра периода
+        const periodFilter = document.getElementById('period-filter');
+        if (periodFilter) {
+            periodFilter.addEventListener('change', updatePeriodFilter);
+        }
     }
 
     // Инициализация приложения
