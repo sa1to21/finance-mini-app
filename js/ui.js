@@ -1,4 +1,3 @@
-js
 import { addTransaction, updateFilters, applyFilters } from './transactions.js';
 import { displayAccounts } from './accounts.js';
 import { displayStats } from './stats.js';
