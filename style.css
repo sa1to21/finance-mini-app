@@ -1,0 +1,492 @@
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #0f0f23);
+            color: var(--tg-theme-text-color, #ffffff);
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 16px;
+            min-height: 100vh;
+            padding-bottom: 80px; /* Отступ для фиксированного меню */
+        }
+
+        /* Велком страница */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            background: linear-gradient(135deg, var(--tg-theme-button-color, #2481cc), var(--tg-theme-secondary-bg-color, #1a1a2e));
+        }
+
+        .welcome-logo {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+
+        .welcome-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .welcome-subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8); /* Исправлено для лучшей видимости */
+            margin-bottom: 32px;
+            max-width: 300px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3); /* Добавлена тень для читаемости */
+        }
+
+        .welcome-features {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            max-width: 320px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .feature-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .feature-icon {
+            font-size: 20px;
+            margin-right: 12px;
+            width: 24px;
+        }
+
+        .welcome-btn {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .welcome-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Основной интерфейс */
+        .main-app {
+            display: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+        }
+
+        .total-balance {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+
+        .total-balance.positive {
+            color: #4CAF50;
+        }
+
+        .total-balance.negative {
+            color: #f44336;
+        }
+
+        .accounts-summary {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .account-chip {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+        }
+
+        /* Фиксированное нижнее меню */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            border-top: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+            display: flex;
+            padding: 8px 0;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .nav-item.active {
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .form-section {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+            border-radius: 8px;
+            background: var(--tg-theme-bg-color, #0f0f23);
+            color: var(--tg-theme-text-color, #ffffff);
+            font-size: 16px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn.secondary {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+        }
+
+        .btn.danger {
+            background: #f44336;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        /* Фильтры */
+        .filters {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .clear-filters {
+            grid-column: 1 / -1;
+        }
+
+        /* Список операций */
+        .transaction-list {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .transaction-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .transaction-info {
+            flex: 1;
+        }
+
+        .transaction-category {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .transaction-date {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .transaction-account {
+            font-size: 11px;
+            background: var(--tg-theme-secondary-bg-color, #16213e);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .transaction-amount {
+            font-weight: bold;
+            font-size: 16px;
+            text-align: right;
+        }
+
+        .transaction-amount.income {
+            color: #4CAF50;
+        }
+
+        .transaction-amount.expense {
+            color: #f44336;
+        }
+
+        .transaction-amount.transfer {
+            color: #ff9800;
+        }
+
+        /* Счета */
+        .accounts-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .account-card {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .account-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .account-icon {
+            font-size: 24px;
+        }
+
+        .account-balance {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .account-balance.positive {
+            color: #4CAF50;
+        }
+
+        .account-balance.negative {
+            color: #f44336;
+        }
+
+        /* Статистика */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999);
+            text-transform: uppercase;
+        }
+
+        .category-stats {
+            background: var(--tg-theme-section-bg-color, #1a1a2e);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+        }
+
+        .category-item:last-child {
+            border-bottom: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #f44336;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .sync-status.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .total-balance {
+                font-size: 28px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .accounts-summary {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .nav-label {
+                font-size: 10px;
+            }
+
+            .nav-icon {
+                font-size: 18px;
+            }
+        }
+    </style>
