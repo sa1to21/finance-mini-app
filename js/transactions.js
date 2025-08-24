@@ -1,4 +1,3 @@
-js
 import { accounts, transactions, saveData } from './storage.js';
 import { formatCurrency } from './utils.js';
 
