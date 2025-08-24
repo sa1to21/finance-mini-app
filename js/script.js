@@ -1106,9 +1106,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
                     ${formatCurrency(account.balance)}
                 </div>
-                <div style="margin-top: 12px;">
-                    <button class="edit-account-btn" onclick="editAccount('${account.id}')">Редактировать</button>
-                    <button class="btn danger" onclick="deleteAccount('${account.id}')">Удалить счёт</button>
+                <div class="account-actions">
+                    <button class="account-edit-btn" onclick="editAccount('${account.id}')">Редактировать</button>
+                    <button class="account-delete-btn" onclick="deleteAccount('${account.id}')">Удалить</button>
                 </div>
             </div>
         `).join('');
@@ -1296,7 +1296,7 @@ document.addEventListener("DOMContentLoaded", () => {
             status.classList.add('show');
             setTimeout(() => {
                 status.classList.remove('show');
-            }, 2000);
+            }, 1500);
         }
     }
 
