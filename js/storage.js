@@ -1,4 +1,3 @@
-js
 export let transactions = [];
 export let accounts = [];
 
