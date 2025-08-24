@@ -547,7 +547,6 @@ document.addEventListener("DOMContentLoaded", () => {
         saveData();
         updateAllBalances();
         clearForm();
-        showSyncStatus();
 
         if (tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
@@ -1291,13 +1290,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Показать статус синхронизации
     function showSyncStatus() {
-        const status = document.getElementById('sync-status');
-        if (status && !status.classList.contains('show')) {
-            status.classList.add('show');
-            setTimeout(() => {
-                status.classList.remove('show');
-            }, 1500);
-        }
+        // Функция отключена - индикатор синхронизации убран
+        return;
     }
 
     // Форматирование валюты
@@ -1336,12 +1330,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const balanceElement = document.getElementById('total-balance');
             if (balanceElement) {
                 balanceElement.textContent = 'Загрузка...';
-            }
-            
-            // Убираем индикатор синхронизации при старте
-            const syncStatus = document.getElementById('sync-status');
-            if (syncStatus) {
-                syncStatus.classList.remove('show');
             }
             
             // Загружаем данные из облака
