@@ -434,17 +434,37 @@ input:focus, select:focus, textarea:focus {
     color: #f44336;
 }
 
-/* Кнопка редактирования счета */
-.edit-account-btn {
-    background: var(--tg-theme-button-color, #2481cc);
-    color: var(--tg-theme-button-text-color, #ffffff);
+/* Кнопки управления счетом */
+.account-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.account-edit-btn, .account-delete-btn {
+    flex: 1;
+    padding: 8px 12px;
     border: none;
     border-radius: 8px;
-    padding: 8px 12px;
     font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    margin-right: 8px;
-    margin-top: 12px;
+    transition: all 0.3s;
+}
+
+.account-edit-btn {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+.account-edit-btn:hover {
+    opacity: 0.8;
+}
+
+.account-delete-btn {
+    background: var(--tg-theme-section-bg-color, #1a1a2e);
+    color: #f44336;
+    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
 }
 
 /* Статистика */
