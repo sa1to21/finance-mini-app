@@ -10,8 +10,28 @@ document.addEventListener("DOMContentLoaded", () => {
         colorScheme: 'dark'
     };
     
+    // ВАЖНО: Принудительно раскрываем приложение
     tg.expand();
     tg.ready();
+    
+    // Дополнительная попытка раскрытия через некоторое время
+    setTimeout(() => {
+        if (tg.expand) {
+            tg.expand();
+        }
+    }, 100);
+    
+    // Принудительно устанавливаем высоту для body
+    function setFullHeight() {
+        const vh = window.innerHeight;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        document.body.style.minHeight = `${vh}px`;
+        document.body.style.height = `${vh}px`;
+    }
+    
+    // Устанавливаем высоту сразу и при изменении размера
+    setFullHeight();
+    window.addEventListener('resize', setFullHeight);
 
     // Данные приложения
     let transactions = [];
@@ -35,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const incomeCategories = {
         'salary': '💰 Зарплата',
-        'freelance': '💻 Фриланс',
+        'freelance': '💻 Фрилан',
         'business': '🏢 Бизнес',
         'investment': '📈 Инвестиции',
         'gift': '🎁 Подарок',
@@ -193,6 +213,13 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Сохраняем флаг что велком показали
         localStorage.setItem('welcome_shown', 'true');
+        
+        // Еще раз пытаемся раскрыть после показа основного интерфейса
+        setTimeout(() => {
+            if (tg.expand) {
+                tg.expand();
+            }
+        }, 200);
         
         if (tg.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('medium');
