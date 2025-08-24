@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let transactions = [];
     let accounts = [];
     let isLoading = false;
+    let editingTransactionId = null;
 
     // Категории с эмодзи
     const expenseCategories = {
@@ -256,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
             toAccountGroup.classList.add('hidden');
             accountGroup.classList.remove('hidden');
             
+            // Очищаем существующие опции
             categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
             const categories = type === 'expense' ? expenseCategories : incomeCategories;
             
@@ -268,6 +270,42 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         updateAccountSelect();
+    }
+
+    // Обновление категорий для редактирования
+    window.updateEditCategories = function() {
+        const type = document.getElementById('edit-type').value;
+        const categoryGroup = document.getElementById('edit-category-group');
+        const fromAccountGroup = document.getElementById('edit-from-account-group');
+        const toAccountGroup = document.getElementById('edit-to-account-group');
+        const accountGroup = document.getElementById('edit-account-group');
+        const categorySelect = document.getElementById('edit-category');
+        
+        if (type === 'transfer') {
+            categoryGroup.classList.add('hidden');
+            fromAccountGroup.classList.remove('hidden');
+            toAccountGroup.classList.remove('hidden');
+            accountGroup.classList.add('hidden');
+            updateEditAccountSelects();
+        } else {
+            categoryGroup.classList.remove('hidden');
+            fromAccountGroup.classList.add('hidden');
+            toAccountGroup.classList.add('hidden');
+            accountGroup.classList.remove('hidden');
+            
+            // Очищаем существующие опции
+            categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
+            const categories = type === 'expense' ? expenseCategories : incomeCategories;
+            
+            Object.entries(categories).forEach(([value, label]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                categorySelect.appendChild(option);
+            });
+        }
+        
+        updateEditAccountSelect();
     }
 
     // Обновление списков счетов
@@ -288,6 +326,37 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateAccountSelects() {
         const fromSelect = document.getElementById('from-account');
         const toSelect = document.getElementById('to-account');
+        
+        [fromSelect, toSelect].forEach(select => {
+            if (select) {
+                select.innerHTML = '';
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = `${account.icon} ${account.name}`;
+                    select.appendChild(option);
+                });
+            }
+        });
+    }
+
+    function updateEditAccountSelect() {
+        const accountSelect = document.getElementById('edit-account');
+        if (accountSelect) {
+            accountSelect.innerHTML = '<option value="">Выберите счёт</option>';
+            
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = `${account.icon} ${account.name}`;
+                accountSelect.appendChild(option);
+            });
+        }
+    }
+
+    function updateEditAccountSelects() {
+        const fromSelect = document.getElementById('edit-from-account');
+        const toSelect = document.getElementById('edit-to-account');
         
         [fromSelect, toSelect].forEach(select => {
             if (select) {
@@ -463,6 +532,176 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Редактирование транзакции
+    window.editTransaction = function(id) {
+        const transaction = transactions.find(t => t.id === id);
+        if (!transaction) return;
+
+        editingTransactionId = id;
+
+        // Заполняем форму редактирования
+        document.getElementById('edit-type').value = transaction.type;
+        document.getElementById('edit-amount').value = transaction.amount;
+        document.getElementById('edit-description').value = transaction.description || '';
+
+        if (transaction.type === 'transfer') {
+            document.getElementById('edit-from-account').value = transaction.fromAccount;
+            document.getElementById('edit-to-account').value = transaction.toAccount;
+        } else {
+            document.getElementById('edit-category').value = transaction.category;
+            document.getElementById('edit-account').value = transaction.account;
+        }
+
+        updateEditCategories();
+        document.getElementById('edit-modal').classList.remove('hidden');
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    }
+
+    window.closeEditModal = function() {
+        document.getElementById('edit-modal').classList.add('hidden');
+        editingTransactionId = null;
+    }
+
+    window.saveEditTransaction = function() {
+        if (!editingTransactionId) return;
+
+        const transaction = transactions.find(t => t.id === editingTransactionId);
+        if (!transaction) return;
+
+        const type = document.getElementById('edit-type').value;
+        const amount = parseFloat(document.getElementById('edit-amount').value);
+        const description = document.getElementById('edit-description').value;
+
+        if (!amount || amount <= 0) {
+            if (tg.showAlert) {
+                tg.showAlert('Введите корректную сумму');
+            } else {
+                alert('Введите корректную сумму');
+            }
+            return;
+        }
+
+        // Возвращаем старые изменения в балансах
+        if (transaction.type === 'transfer') {
+            const oldFromAccount = accounts.find(a => a.id === transaction.fromAccount);
+            const oldToAccount = accounts.find(a => a.id === transaction.toAccount);
+            if (oldFromAccount) oldFromAccount.balance += transaction.amount;
+            if (oldToAccount) oldToAccount.balance -= transaction.amount;
+        } else {
+            const oldAccount = accounts.find(a => a.id === transaction.account);
+            if (oldAccount) {
+                if (transaction.type === 'income') {
+                    oldAccount.balance -= transaction.amount;
+                } else {
+                    oldAccount.balance += transaction.amount;
+                }
+            }
+        }
+
+        // Обновляем транзакцию
+        if (type === 'transfer') {
+            const fromAccountId = document.getElementById('edit-from-account').value;
+            const toAccountId = document.getElementById('edit-to-account').value;
+            
+            if (!fromAccountId || !toAccountId) {
+                if (tg.showAlert) {
+                    tg.showAlert('Выберите счета для перевода');
+                } else {
+                    alert('Выберите счета для перевода');
+                }
+                return;
+            }
+            
+            if (fromAccountId === toAccountId) {
+                if (tg.showAlert) {
+                    tg.showAlert('Нельзя переводить на тот же счёт');
+                } else {
+                    alert('Нельзя переводить на тот же счёт');
+                }
+                return;
+            }
+
+            const fromAccount = accounts.find(a => a.id === fromAccountId);
+            const toAccount = accounts.find(a => a.id === toAccountId);
+
+            if (fromAccount.balance < amount) {
+                if (tg.showAlert) {
+                    tg.showAlert('Недостаточно средств на счёте');
+                } else {
+                    alert('Недостаточно средств на счёте');
+                }
+                return;
+            }
+
+            transaction.type = 'transfer';
+            transaction.amount = amount;
+            transaction.fromAccount = fromAccountId;
+            transaction.toAccount = toAccountId;
+            transaction.description = description || `Перевод ${fromAccount.name} → ${toAccount.name}`;
+            delete transaction.category;
+            delete transaction.account;
+
+            // Применяем новые изменения
+            fromAccount.balance -= amount;
+            toAccount.balance += amount;
+        } else {
+            const category = document.getElementById('edit-category').value;
+            const accountId = document.getElementById('edit-account').value;
+            
+            if (!category) {
+                if (tg.showAlert) {
+                    tg.showAlert('Выберите категорию');
+                } else {
+                    alert('Выберите категорию');
+                }
+                return;
+            }
+            
+            if (!accountId) {
+                if (tg.showAlert) {
+                    tg.showAlert('Выберите счёт');
+                } else {
+                    alert('Выберите счёт');
+                }
+                return;
+            }
+
+            const account = accounts.find(a => a.id === accountId);
+
+            transaction.type = type;
+            transaction.amount = amount;
+            transaction.category = category;
+            transaction.account = accountId;
+            transaction.description = description;
+            delete transaction.fromAccount;
+            delete transaction.toAccount;
+
+            // Применяем новые изменения
+            if (type === 'income') {
+                account.balance += amount;
+            } else {
+                account.balance -= amount;
+            }
+        }
+
+        saveData();
+        updateAllBalances();
+        applyFilters();
+        closeEditModal();
+        showSyncStatus();
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        if (tg.showAlert) {
+            tg.showAlert('Операция обновлена!');
+        }
+    }
+
     // Очистка формы
     function clearForm() {
         document.getElementById('amount').value = '';
@@ -607,7 +846,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             return `
                 <div class="transaction-item">
-                    <div class="transaction-info">
+                    <div class="transaction-info" onclick="editTransaction(${transaction.id})">
                         <div class="transaction-category">${categoryName}</div>
                         <div class="transaction-date">${date}</div>
                         ${accountInfo}
@@ -616,7 +855,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="transaction-amount ${transaction.type}">
                         ${transaction.type === 'income' ? '+' : (transaction.type === 'transfer' ? '' : '-')}${formatCurrency(transaction.amount)}
                     </div>
-                    <button class="delete-btn" onclick="deleteTransaction(${transaction.id})">🗑️</button>
+                    <div class="transaction-actions">
+                        <button class="edit-btn" onclick="editTransaction(${transaction.id})" title="Редактировать">✏️</button>
+                        <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" title="Удалить">🗑️</button>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -702,10 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
                     ${formatCurrency(account.balance)}
                 </div>
-                ${account.id !== 'cash' && account.id !== 'card' ? 
-                    `<button class="btn danger" style="margin-top: 12px;" onclick="deleteAccount('${account.id}')">Удалить счёт</button>` : 
-                    ''
-                }
+                <button class="btn danger" style="margin-top: 12px;" onclick="deleteAccount('${account.id}')">Удалить счёт</button>
             </div>
         `).join('');
 
