@@ -105,7 +105,7 @@
                 <div class="filters">
                     <div class="filter-row">
                         <select id="period-filter">
-                            <option value="all">Все операции</option>
+                            <option value="all">За всё время</option>
                             <option value="today">Сегодня</option>
                             <option value="week">Последние 7 дней</option>
                             <option value="month">Последний месяц</option>
@@ -191,6 +191,65 @@
                 <div class="category-stats">
                     <h3 style="margin-bottom: 16px;">Балансы счетов</h3>
                     <div id="accounts-breakdown"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно редактирования операции -->
+        <div id="edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Редактировать операцию</h3>
+                    <button class="modal-close" onclick="closeEditModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Тип операции</label>
+                        <select id="edit-type" onchange="updateEditCategories()">
+                            <option value="expense">Расход</option>
+                            <option value="income">Доход</option>
+                            <option value="transfer">Перевод между счетами</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Сумма</label>
+                        <input type="number" id="edit-amount" placeholder="0">
+                    </div>
+
+                    <div id="edit-category-group" class="form-group">
+                        <label>Категория</label>
+                        <select id="edit-category">
+                            <option value="">Выберите категорию</option>
+                        </select>
+                    </div>
+
+                    <div id="edit-from-account-group" class="form-group hidden">
+                        <label>Со счёта</label>
+                        <select id="edit-from-account"></select>
+                    </div>
+
+                    <div id="edit-to-account-group" class="form-group hidden">
+                        <label>На счёт</label>
+                        <select id="edit-to-account"></select>
+                    </div>
+
+                    <div id="edit-account-group" class="form-group">
+                        <label>Счёт</label>
+                        <select id="edit-account">
+                            <option value="">Выберите счёт</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Комментарий</label>
+                        <input type="text" id="edit-description" placeholder="Описание операции">
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn secondary" onclick="closeEditModal()">Отмена</button>
+                        <button class="btn" onclick="saveEditTransaction()">Сохранить</button>
+                    </div>
                 </div>
             </div>
         </div>
