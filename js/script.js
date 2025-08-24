@@ -1,4 +1,4 @@
-<script>
+
         // Инициализация Telegram WebApp
         let tg = window.Telegram.WebApp;
         tg.expand();
@@ -858,4 +858,3 @@
 
         // Запуск приложения
         init();
-    </script>
