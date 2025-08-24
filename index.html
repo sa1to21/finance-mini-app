@@ -1,19 +1,218 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Финансы</title>
-<link rel="stylesheet" href="css/style.css">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script type="module" src="js/app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Финансы</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
 </head>
 <body>
-<!-- Велком экран -->
-<div id="welcome-screen" class="welcome-screen"> ... </div>
+    <!-- Велком экран -->
+    <div id="welcome-screen" class="welcome-screen">
+        <div class="welcome-logo">💰</div>
+        <h1 class="welcome-title">Мои финансы</h1>
+        <p class="welcome-subtitle">Умный учёт доходов и расходов прямо в Telegram</p>
+        
+        <div class="welcome-features">
+            <div class="feature-item">
+                <span class="feature-icon">📊</span>
+                <span>Учёт по категориям</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">💳</span>
+                <span>Множественные счета</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">📈</span>
+                <span>Детальная статистика</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">☁️</span>
+                <span>Синхронизация в облаке</span>
+            </div>
+        </div>
+        
+        <button class="welcome-btn" onclick="startApp()">Начать пользоваться</button>
+    </div>
 
+    <!-- Основное приложение -->
+    <div id="main-app" class="main-app">
+        <div class="container">
+            <!-- Индикатор синхронизации -->
+            <div class="sync-status" id="sync-status">☁️ Синхронизация</div>
 
-<!-- Основное приложение -->
-<div id="main-app" class="main-app"> ... </div>
+            <!-- Заголовок с балансом -->
+            <div class="header">
+                <h1>Общий баланс</h1>
+                <div class="total-balance" id="total-balance">0 ₽</div>
+                <div class="accounts-summary" id="accounts-summary"></div>
+            </div>
+
+            <!-- Форма добавления -->
+            <div id="add-tab" class="tab-content">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label>Тип операции</label>
+                        <select id="type" onchange="updateCategories()">
+                            <option value="expense">Расход</option>
+                            <option value="income">Доход</option>
+                            <option value="transfer">Перевод между счетами</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Сумма</label>
+                        <input type="number" id="amount" placeholder="0">
+                    </div>
+
+                    <div id="category-group" class="form-group">
+                        <label>Категория</label>
+                        <select id="category">
+                            <option value="">Выберите категорию</option>
+                        </select>
+                    </div>
+
+                    <div id="from-account-group" class="form-group hidden">
+                        <label>Со счёта</label>
+                        <select id="from-account"></select>
+                    </div>
+
+                    <div id="to-account-group" class="form-group hidden">
+                        <label>На счёт</label>
+                        <select id="to-account"></select>
+                    </div>
+
+                    <div id="account-group" class="form-group">
+                        <label>Счёт</label>
+                        <select id="account">
+                            <option value="">Выберите счёт</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Комментарий</label>
+                        <input type="text" id="description" placeholder="Описание операции">
+                    </div>
+
+                    <button class="btn" onclick="addTransaction()">Добавить операцию</button>
+                </div>
+            </div>
+
+            <!-- История операций -->
+            <div id="history-tab" class="tab-content hidden">
+                <div class="filters">
+                    <div class="filter-row">
+                        <select id="period-filter">
+                            <option value="all">Все операции</option>
+                            <option value="today">Сегодня</option>
+                            <option value="week">Последние 7 дней</option>
+                            <option value="month">Последний месяц</option>
+                            <option value="quarter">Последние 3 месяца</option>
+                        </select>
+                        <select id="category-filter">
+                            <option value="all">Все категории</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <select id="type-filter">
+                            <option value="all">Все типы</option>
+                            <option value="income">Доходы</option>
+                            <option value="expense">Расходы</option>
+                            <option value="transfer">Переводы</option>
+                        </select>
+                        <select id="account-filter">
+                            <option value="all">Все счета</option>
+                        </select>
+                    </div>
+                    <button class="btn secondary clear-filters" onclick="clearFilters()">Очистить фильтры</button>
+                </div>
+                
+                <div class="transaction-list" id="transaction-list">
+                    <div class="empty-state">
+                        <p>Операций пока нет</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Счета -->
+            <div id="accounts-tab" class="tab-content hidden">
+                <div class="accounts-grid" id="accounts-grid"></div>
+                
+                <div class="form-section">
+                    <h3 style="margin-bottom: 16px;">Добавить новый счёт</h3>
+                    <div class="form-group">
+                        <label>Название счёта</label>
+                        <input type="text" id="new-account-name" placeholder="Например: Сберегательный счёт">
+                    </div>
+                    <div class="form-group">
+                        <label>Иконка</label>
+                        <select id="new-account-icon">
+                            <option value="💵">💵</option>
+                            <option value="💳">💳</option>
+                            <option value="🏦">🏦</option>
+                            <option value="📊">📊</option>
+                            <option value="🐷">🐷</option>
+                            <option value="💰">💰</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Начальный баланс</label>
+                        <input type="number" id="new-account-balance" placeholder="0">
+                    </div>
+                    <button class="btn" onclick="addAccount()">Добавить счёт</button>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div id="stats-tab" class="tab-content hidden">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-income" style="color: #4CAF50;">0 ₽</div>
+                        <div class="stat-label">Доходы</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-expenses" style="color: #f44336;">0 ₽</div>
+                        <div class="stat-label">Расходы</div>
+                    </div>
+                </div>
+
+                <div class="category-stats">
+                    <h3 style="margin-bottom: 16px;">Расходы по категориям</h3>
+                    <div id="expense-breakdown"></div>
+                </div>
+
+                <div class="category-stats">
+                    <h3 style="margin-bottom: 16px;">Доходы по категориям</h3>
+                    <div id="income-breakdown"></div>
+                </div>
+
+                <div class="category-stats">
+                    <h3 style="margin-bottom: 16px;">Балансы счетов</h3>
+                    <div id="accounts-breakdown"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фиксированное нижнее меню -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="showTab('add')">
+                <div class="nav-icon">➕</div>
+                <div class="nav-label">Добавить</div>
+            </div>
+            <div class="nav-item" onclick="showTab('history')">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">История</div>
+            </div>
+            <div class="nav-item" onclick="showTab('accounts')">
+                <div class="nav-icon">💳</div>
+                <div class="nav-label">Счета</div>
+            </div>
+            <div class="nav-item" onclick="showTab('stats')">
+                <div class="nav-icon">📊</div>
+                <div class="nav-label">Статистика</div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
