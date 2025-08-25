@@ -112,23 +112,36 @@
                             <option value="week">Последние 7 дней</option>
                             <option value="month">Последний месяц</option>
                             <option value="quarter">Последние 3 месяца</option>
-                            <option value="custom">Выбрать период</option>
-                            <option value="single">Конкретная дата</option>
+                            <option value="calendar">Выбрать дату</option>
                         </select>
                         <select id="category-filter">
                             <option value="all">Все категории</option>
                         </select>
                     </div>
                     
-                    <!-- Кастомные даты -->
-                    <div id="custom-date-range" class="filter-row hidden">
-                        <input type="date" id="start-date" placeholder="Дата от">
-                        <input type="date" id="end-date" placeholder="Дата до">
-                    </div>
-                    
-                    <!-- Одиночная дата -->
-                    <div id="single-date" class="filter-row hidden">
-                        <input type="date" id="single-date-input" placeholder="Выберите дату" style="grid-column: 1 / -1;">
+                    <!-- Календарь выбора дат -->
+                    <div id="calendar-date-range" class="hidden">
+                        <div class="date-mode-toggle">
+                            <button type="button" class="date-mode-btn active" onclick="setDateMode('single')">Конкретная дата</button>
+                            <button type="button" class="date-mode-btn" onclick="setDateMode('range')">Период</button>
+                        </div>
+                        <div class="calendar-container">
+                            <div class="calendar-header">
+                                <button type="button" class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
+                                <div class="calendar-month-year" id="calendar-month-year">Январь 2024</div>
+                                <button type="button" class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day-header">Пн</div>
+                                <div class="calendar-day-header">Вт</div>
+                                <div class="calendar-day-header">Ср</div>
+                                <div class="calendar-day-header">Чт</div>
+                                <div class="calendar-day-header">Пт</div>
+                                <div class="calendar-day-header">Сб</div>
+                                <div class="calendar-day-header">Вс</div>
+                                <div id="calendar-days"></div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="filter-row">
@@ -181,6 +194,28 @@
                 </div>
             </div>
 
+            <!-- Управление категориями -->
+            <div id="categories-tab" class="tab-content hidden">
+                <div class="category-management">
+                    <h3 style="margin-bottom: 16px;">Управление категориями</h3>
+                    
+                    <div class="category-list" id="category-list"></div>
+                    
+                    <div class="form-group">
+                        <label>Добавить новую категорию</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <input type="text" id="new-category-name" placeholder="Название категории" style="flex: 1;">
+                            <select id="new-category-type" style="width: 120px;">
+                                <option value="expense">Расход</option>
+                                <option value="income">Доход</option>
+                            </select>
+                        </div>
+                        <input type="text" id="new-category-icon" placeholder="Иконка (например: 🍕)" maxlength="2">
+                    </div>
+                    <button class="btn" onclick="addCategory()">Добавить категорию</button>
+                </div>
+            </div>
+
             <!-- Статистика -->
             <div id="stats-tab" class="tab-content hidden">
                 <div class="stats-grid">
@@ -207,45 +242,6 @@
                 <div class="category-stats">
                     <h3 style="margin-bottom: 16px;">Балансы счетов</h3>
                     <div id="accounts-breakdown"></div>
-                </div>
-            </div>
-            
-            <!-- Настройки -->
-            <div id="settings-tab" class="tab-content hidden">
-                <div class="form-section">
-                    <h3 style="margin-bottom: 16px;">Управление категориями</h3>
-                    
-                    <div class="category-tabs">
-                        <button class="category-tab active" onclick="showCategoryType('expense')">Категории расходов</button>
-                        <button class="category-tab" onclick="showCategoryType('income')">Категории доходов</button>
-                    </div>
-                    
-                    <div id="expense-categories-list" class="categories-list">
-                        <!-- Динамически заполняется -->
-                    </div>
-                    
-                    <div id="income-categories-list" class="categories-list hidden">
-                        <!-- Динамически заполняется -->
-                    </div>
-                    
-                    <div class="add-category-form">
-                        <h4 style="margin-bottom: 12px;">Добавить категорию</h4>
-                        <div class="form-group">
-                            <input type="text" id="new-category-name" placeholder="Название категории">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="new-category-emoji" placeholder="Эмодзи (например: 🎮)" maxlength="2">
-                        </div>
-                        <button class="btn" onclick="addCustomCategory()">Добавить категорию</button>
-                    </div>
-                </div>
-                
-                <div class="form-section" style="margin-top: 20px;">
-                    <h3 style="margin-bottom: 16px;">Экспорт и импорт данных</h3>
-                    <div class="btn-group">
-                        <button class="btn secondary" onclick="exportData()">Экспортировать</button>
-                        <button class="btn secondary" onclick="importData()">Импортировать</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -366,13 +362,13 @@
                 <div class="nav-icon">💳</div>
                 <div class="nav-label">Счета</div>
             </div>
+            <div class="nav-item" onclick="showTab('categories')">
+                <div class="nav-icon">🏷️</div>
+                <div class="nav-label">Категории</div>
+            </div>
             <div class="nav-item" onclick="showTab('stats')">
                 <div class="nav-icon">📊</div>
                 <div class="nav-label">Статистика</div>
-            </div>
-            <div class="nav-item" onclick="showTab('settings')">
-                <div class="nav-icon">⚙️</div>
-                <div class="nav-label">Настройки</div>
             </div>
         </div>
     </div>
