@@ -521,28 +521,31 @@
 
     // Обновление категорий в зависимости от типа операции
     window.updateCategories = function() {
-        const type = document.getElementById('type').value;
+        const type = document.getElementById('type');
         const categoryGroup = document.getElementById('category-group');
         const fromAccountGroup = document.getElementById('from-account-group');
         const toAccountGroup = document.getElementById('to-account-group');
         const accountGroup = document.getElementById('account-group');
         const categorySelect = document.getElementById('category');
         
-        if (type === 'transfer') {
-            categoryGroup.classList.add('hidden');
-            fromAccountGroup.classList.remove('hidden');
-            toAccountGroup.classList.remove('hidden');
-            accountGroup.classList.add('hidden');
+        // Проверяем существование элементов
+        if (!type || !categorySelect) return;
+        
+        if (type.value === 'transfer') {
+            if (categoryGroup) categoryGroup.classList.add('hidden');
+            if (fromAccountGroup) fromAccountGroup.classList.remove('hidden');
+            if (toAccountGroup) toAccountGroup.classList.remove('hidden');
+            if (accountGroup) accountGroup.classList.add('hidden');
             updateAccountSelects();
         } else {
-            categoryGroup.classList.remove('hidden');
-            fromAccountGroup.classList.add('hidden');
-            toAccountGroup.classList.add('hidden');
-            accountGroup.classList.remove('hidden');
+            if (categoryGroup) categoryGroup.classList.remove('hidden');
+            if (fromAccountGroup) fromAccountGroup.classList.add('hidden');
+            if (toAccountGroup) toAccountGroup.classList.add('hidden');
+            if (accountGroup) accountGroup.classList.remove('hidden');
             
             // Очищаем существующие опции
             categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
-            const categories = type === 'expense' ? expenseCategories : incomeCategories;
+            const categories = type.value === 'expense' ? expenseCategories : incomeCategories;
             
             Object.entries(categories).forEach(([value, label]) => {
                 const option = document.createElement('option');
@@ -1720,7 +1723,12 @@
             
             // Обновляем интерфейс
             updateAllBalances();
-            updateCategories();
+            
+            // Обновляем категории только если элементы существуют
+            if (document.getElementById('type')) {
+                updateCategories();
+            }
+            
             setupFilterHandlers();
             
             // Настройка цветовой темы
