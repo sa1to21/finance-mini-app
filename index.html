@@ -5,10 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Финансы</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="css/style.css">
-<script src="js/script.js"></script>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Индикатор синхронизации -->
+    <div id="sync-status" class="sync-status hidden">
+        <span class="sync-icon">☁️</span>
+        <span class="sync-text">Синхронизация...</span>
+    </div>
+
     <!-- Велком экран -->
     <div id="welcome-screen" class="welcome-screen">
         <div class="welcome-logo">💰</div>
@@ -202,6 +207,7 @@
 
         <!-- Модальное окно редактирования операции -->
         <div id="edit-modal" class="modal hidden">
+            <div class="modal-overlay" onclick="closeEditModal()"></div>
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Редактировать операцию</h3>
@@ -261,6 +267,7 @@
 
         <!-- Модальное окно редактирования счета -->
         <div id="edit-account-modal" class="modal hidden">
+            <div class="modal-overlay" onclick="closeEditAccountModal()"></div>
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Редактировать счёт</h3>
@@ -320,6 +327,6 @@
             </div>
         </div>
     </div>
-<script src="js/script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
