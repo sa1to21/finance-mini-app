@@ -1,4 +1,659 @@
+// Global functions - ensure these are immediately accessible
+window.toggleIconSelection = function() {
+    const container = document.getElementById('icon-grid-container');
+    
+    if (isIconGridVisible) {
+        container.classList.add('hidden');
+        isIconGridVisible = false;
+    }
+
+function createDayElement(day, className, date) {
+    const dayElement = document.createElement('div');
+    dayElement.className = `calendar-day ${className}`;
+    dayElement.textContent = day;
+    dayElement.onclick = () => selectDate(date);
+    
+    if (dateMode === 'single' && selectedDate && 
+        date.toDateString() === selectedDate.toDateString()) {
+        dayElement.classList.add('selected');
+    } else if (dateMode === 'range') {
+        if (selectedRange.start && date.toDateString() === selectedRange.start.toDateString()) {
+            dayElement.classList.add('range-start');
+        }
+        if (selectedRange.end && date.toDateString() === selectedRange.end.toDateString()) {
+            dayElement.classList.add('range-end');
+        }
+        if (selectedRange.start && selectedRange.end && 
+            date > selectedRange.start && date < selectedRange.end) {
+            dayElement.classList.add('in-range');
+        }
+    }
+    
+    return dayElement;
+}
+
+function selectDate(date) {
+    if (dateMode === 'single') {
+        selectedDate = date;
+    } else {
+        if (!selectedRange.start || (selectedRange.start && selectedRange.end)) {
+            selectedRange = { start: date, end: null };
+        } else {
+            if (date < selectedRange.start) {
+                selectedRange = { start: date, end: selectedRange.start };
+            } else {
+                selectedRange.end = date;
+            }
+        }
+    }
+    
+    renderCalendar();
+    if (typeof applyFilters === 'function') {
+        applyFilters();
+    }
+}
+
+function initializeDefaultCategories() {
+    if (Object.keys(categories.expense).length === 0) {
+        categories.expense = { ...defaultExpenseCategories };
+    }
+    if (Object.keys(categories.income).length === 0) {
+        categories.income = { ...defaultIncomeCategories };
+    }
+}
+
+function initializeDefaultAccounts() {
+    if (accounts.length === 0) {
+        accounts = [
+            {
+                id: 'cash',
+                name: 'Наличные',
+                icon: '💵',
+                balance: 0
+            },
+            {
+                id: 'card',
+                name: 'Банковская карта', 
+                icon: '💳',
+                balance: 0
+            }
+        ];
+    }
+}
+
+function checkWelcome() {
+    const welcomeShown = localStorage.getItem('welcome_shown');
+    if (welcomeShown) {
+        document.getElementById('welcome-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+    }
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('ru-RU').format(amount) + ' ₽';
+}
+
+function displayCategories() {
+    const categoryList = document.getElementById('category-list');
+    if (!categoryList) return;
+
+    const allCategories = [
+        ...Object.entries(categories.expense).map(([id, cat]) => ({ id, ...cat, type: 'expense' })),
+        ...Object.entries(categories.income).map(([id, cat]) => ({ id, ...cat, type: 'income' }))
+    ];
+
+    categoryList.innerHTML = allCategories.map(category => {
+        const isEditing = editingCategoryId === category.id && editingCategoryType === category.type;
+        const nameWithoutIcon = category.name.replace(category.icon + ' ', '');
+        
+        return `
+            <div class="category-row">
+                <div class="category-icon-display">${category.icon}</div>
+                
+                ${isEditing ? 
+                    `<input type="text" id="category-edit-input-${category.id}" 
+                            class="category-input" value="${nameWithoutIcon}" 
+                            onkeypress="if(event.key==='Enter') saveCategoryEdit('${category.id}', '${category.type}')"
+                            autofocus>` :
+                    `<input type="text" class="category-input" value="${category.name}" readonly>`
+                }
+                
+                <div class="category-type ${category.type}">
+                    ${category.type === 'income' ? 'Доход' : 'Расход'}
+                </div>
+                
+                <div class="category-actions">
+                    ${category.custom ? (
+                        isEditing ? 
+                            `<button class="category-action-btn save" onclick="saveCategoryEdit('${category.id}', '${category.type}')" title="Сохранить">✓</button>
+                             <button class="category-action-btn cancel" onclick="cancelCategoryEdit()" title="Отмена">✕</button>` :
+                            `<button class="category-action-btn edit" onclick="editCategoryInline('${category.id}', '${category.type}')" title="Редактировать">✏️</button>
+                             <button class="category-action-btn delete" onclick="deleteCategory('${category.id}', '${category.type}')" title="Удалить">🗑️</button>`
+                    ) : '<span style="width: 64px;"></span>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function displayAccounts() {
+    const accountsGrid = document.getElementById('accounts-grid');
+    if (!accountsGrid) return;
+    
+    const accountsHTML = accounts.map(account => `
+        <div class="account-card">
+            <div class="account-header">
+                <div>
+                    <div class="account-name">${account.name}</div>
+                </div>
+                <div class="account-icon">${account.icon}</div>
+            </div>
+            <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
+                ${formatCurrency(account.balance)}
+            </div>
+            <div class="account-actions">
+                <button class="account-edit-btn" onclick="editAccount('${account.id}')">Редактировать</button>
+                <button class="account-delete-btn" onclick="deleteAccount('${account.id}')">Удалить</button>
+            </div>
+        </div>
+    `).join('');
+
+    accountsGrid.innerHTML = accountsHTML;
+}
+
+function displayStats() {
+    const income = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+        
+    const expenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalIncomeEl = document.getElementById('total-income');
+    const totalExpensesEl = document.getElementById('total-expenses');
+    
+    if (totalIncomeEl) totalIncomeEl.textContent = formatCurrency(income);
+    if (totalExpensesEl) totalExpensesEl.textContent = formatCurrency(expenses);
+}
+
+// DOMContentLoaded event with full implementation
+document.addEventListener("DOMContentLoaded", function() {
+    checkWelcome();
+    
+    // Initialize data
+    const localTransactions = localStorage.getItem('transactions');
+    const localAccounts = localStorage.getItem('accounts');
+    const localCategories = localStorage.getItem('categories');
+    
+    transactions = JSON.parse(localTransactions || '[]');
+    accounts = JSON.parse(localAccounts || '[]');
+    categories = JSON.parse(localCategories || '{"expense": {}, "income": {}}');
+    
+    initializeDefaultAccounts();
+    initializeDefaultCategories();
+    
+    // Update all functions with full implementation
+    window.addTransaction = function() {
+        const type = document.getElementById('type').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const description = document.getElementById('description').value;
+
+        if (!amount || amount <= 0) {
+            alert('Введите корректную сумму');
+            return;
+        }
+
+        if (type === 'transfer') {
+            const fromAccountId = document.getElementById('from-account').value;
+            const toAccountId = document.getElementById('to-account').value;
+            
+            if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
+                alert('Выберите разные счета для перевода');
+                return;
+            }
+
+            const fromAccount = accounts.find(a => a.id === fromAccountId);
+            const toAccount = accounts.find(a => a.id === toAccountId);
+
+            if (fromAccount.balance < amount) {
+                alert('Недостаточно средств на счёте');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now(),
+                type: 'transfer',
+                amount: amount,
+                fromAccount: fromAccountId,
+                toAccount: toAccountId,
+                description: description || `Перевод ${fromAccount.name} → ${toAccount.name}`,
+                date: new Date().toISOString()
+            };
+
+            transactions.unshift(transaction);
+            fromAccount.balance -= amount;
+            toAccount.balance += amount;
+        } else {
+            const category = document.getElementById('category').value;
+            const accountId = document.getElementById('account').value;
+            
+            if (!category || !accountId) {
+                alert('Выберите категорию и счёт');
+                return;
+            }
+            
+            const account = accounts.find(a => a.id === accountId);
+
+            const transaction = {
+                id: Date.now(),
+                type: type,
+                amount: amount,
+                category: category,
+                account: accountId,
+                description: description,
+                date: new Date().toISOString()
+            };
+
+            transactions.unshift(transaction);
+
+            if (type === 'income') {
+                account.balance += amount;
+            } else {
+                account.balance -= amount;
+            }
+        }
+
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        
+        document.getElementById('amount').value = '';
+        document.getElementById('description').value = '';
+        
+        updateAllBalances();
+        alert('Операция добавлена!');
+    };
+
+    window.addCategory = function() {
+        const name = document.getElementById('new-category-name').value.trim();
+        const type = document.getElementById('new-category-type').value;
+
+        if (!name) {
+            alert('Введите название категории');
+            return;
+        }
+
+        const categoryId = 'custom_' + Date.now();
+        categories[type][categoryId] = {
+            name: `${selectedIcon} ${name}`,
+            icon: selectedIcon,
+            custom: true
+        };
+
+        document.getElementById('new-category-name').value = '';
+        selectedIcon = '📦';
+        document.getElementById('selected-icon-display').textContent = selectedIcon;
+        document.getElementById('icon-grid-container').classList.add('hidden');
+        isIconGridVisible = false;
+
+        localStorage.setItem('categories', JSON.stringify(categories));
+        
+        updateCategories();
+        displayCategories();
+        alert('Категория добавлена!');
+    };
+
+    window.addAccount = function() {
+        const name = document.getElementById('new-account-name').value.trim();
+        const icon = document.getElementById('new-account-icon').value;
+        const balance = parseFloat(document.getElementById('new-account-balance').value) || 0;
+
+        if (!name) {
+            alert('Введите название счёта');
+            return;
+        }
+
+        const newAccount = {
+            id: 'account_' + Date.now(),
+            name: name,
+            icon: icon,
+            balance: balance
+        };
+
+        accounts.push(newAccount);
+        
+        if (balance !== 0) {
+            const transaction = {
+                id: Date.now(),
+                type: balance > 0 ? 'income' : 'expense',
+                amount: Math.abs(balance),
+                category: balance > 0 ? 'other-income' : 'other-expense',
+                account: newAccount.id,
+                description: `Начальный баланс счёта "${name}"`,
+                date: new Date().toISOString()
+            };
+            transactions.unshift(transaction);
+        }
+
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        
+        displayAccounts();
+        updateAccountSelects();
+
+        document.getElementById('new-account-name').value = '';
+        document.getElementById('new-account-balance').value = '';
+        
+        updateAllBalances();
+        alert('Счёт добавлен!');
+    };
+
+    window.updateCategories = function() {
+        const type = document.getElementById('type').value;
+        const categoryGroup = document.getElementById('category-group');
+        const fromAccountGroup = document.getElementById('from-account-group');
+        const toAccountGroup = document.getElementById('to-account-group');
+        const accountGroup = document.getElementById('account-group');
+        const categorySelect = document.getElementById('category');
+        
+        if (type === 'transfer') {
+            categoryGroup.classList.add('hidden');
+            fromAccountGroup.classList.remove('hidden');
+            toAccountGroup.classList.remove('hidden');
+            accountGroup.classList.add('hidden');
+            updateAccountSelects();
+        } else {
+            categoryGroup.classList.remove('hidden');
+            fromAccountGroup.classList.add('hidden');
+            toAccountGroup.classList.add('hidden');
+            accountGroup.classList.remove('hidden');
+            
+            categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
+            const categoryList = categories[type] || {};
+            
+            Object.entries(categoryList).forEach(([value, categoryData]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = categoryData.name;
+                categorySelect.appendChild(option);
+            });
+        }
+        
+        updateAccountSelect();
+    };
+
+    function updateAllBalances() {
+        const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+        const balanceElement = document.getElementById('total-balance');
+        if (balanceElement) {
+            balanceElement.textContent = formatCurrency(totalBalance);
+            
+            balanceElement.className = 'total-balance';
+            if (totalBalance > 0) {
+                balanceElement.classList.add('positive');
+            } else if (totalBalance < 0) {
+                balanceElement.classList.add('negative');
+            }
+        }
+
+        const accountsSummary = document.getElementById('accounts-summary');
+        if (accountsSummary) {
+            accountsSummary.innerHTML = accounts.map(account => 
+                `<div class="account-chip">${account.icon} ${formatCurrency(account.balance)}</div>`
+            ).join('');
+        }
+    }
+
+    function updateAccountSelect() {
+        const accountSelect = document.getElementById('account');
+        if (accountSelect) {
+            accountSelect.innerHTML = '<option value="">Выберите счёт</option>';
+            
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = `${account.icon} ${account.name}`;
+                accountSelect.appendChild(option);
+            });
+        }
+    }
+
+    function updateAccountSelects() {
+        const fromSelect = document.getElementById('from-account');
+        const toSelect = document.getElementById('to-account');
+        
+        [fromSelect, toSelect].forEach(select => {
+            if (select) {
+                select.innerHTML = '';
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = `${account.icon} ${account.name}`;
+                    select.appendChild(option);
+                });
+            }
+        });
+    }
+    
+    // Initialize the app
+    updateAllBalances();
+    updateCategories();
+    displayCategories();
+    displayAccounts();
+    displayStats();
+    
+    console.log('App initialized successfully');
+}); else {
+        container.classList.remove('hidden');
+        renderIconGrid();
+        isIconGridVisible = true;
+    }
+};
+
+window.selectIcon = function(icon) {
+    selectedIcon = icon;
+    document.getElementById('selected-icon-display').textContent = icon;
+    
+    document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    const selectedElement = document.querySelector(`[onclick="selectIcon('${icon}')"]`);
+    if (selectedElement) {
+        selectedElement.classList.add('selected');
+    }
+};
+
+window.setDateMode = function(mode) {
+    dateMode = mode;
+    document.querySelectorAll('.date-mode-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`[onclick="setDateMode('${mode}')"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    selectedDate = null;
+    selectedRange = { start: null, end: null };
+    renderCalendar();
+    applyFilters();
+};
+
+window.changeMonth = function(delta) {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+    renderCalendar();
+};
+
+window.showTab = function(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('active');
+    });
+    
+    const targetTab = document.getElementById(tabName + '-tab');
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+    }
+    
+    const activeNavItem = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
+    }
+    
+    if (tabName === 'history') {
+        updateFilters();
+        applyFilters();
+    } else if (tabName === 'stats') {
+        displayStats();
+    } else if (tabName === 'accounts') {
+        displayAccounts();
+    } else if (tabName === 'categories') {
+        displayCategories();
+    }
+
+    if (tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+};
+
 window.addTransaction = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Add transaction function called');
+};
+
+window.addCategory = function() {
+    // Implementation will be in DOMContentLoaded  
+    console.log('Add category function called');
+};
+
+window.addAccount = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Add account function called');
+};
+
+window.updateCategories = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Update categories function called');
+};
+
+window.updateEditCategories = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Update edit categories function called');
+};
+
+window.updatePeriodFilter = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Update period filter function called');
+};
+
+window.applyFilters = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Apply filters function called');
+};
+
+window.clearFilters = function() {
+    // Implementation will be in DOMContentLoaded
+    console.log('Clear filters function called');
+};
+
+window.editTransaction = function(id) {
+    console.log('Edit transaction function called', id);
+};
+
+window.deleteTransaction = function(id) {
+    console.log('Delete transaction function called', id);
+};
+
+window.editAccount = function(id) {
+    console.log('Edit account function called', id);
+};
+
+window.deleteAccount = function(id) {
+    console.log('Delete account function called', id);
+};
+
+window.closeEditModal = function() {
+    const modal = document.getElementById('edit-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+};
+
+window.closeEditAccountModal = function() {
+    const modal = document.getElementById('edit-account-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+};
+
+window.saveEditTransaction = function() {
+    console.log('Save edit transaction function called');
+};
+
+window.saveEditAccount = function() {
+    console.log('Save edit account function called');
+};
+
+// Helper functions
+function renderIconGrid() {
+    const iconGrid = document.getElementById('icon-grid');
+    if (!iconGrid) return;
+    
+    iconGrid.innerHTML = availableIcons.map(icon => `
+        <div class="icon-option ${icon === selectedIcon ? 'selected' : ''}" 
+             onclick="selectIcon('${icon}')">${icon}</div>
+    `).join('');
+}
+
+function renderCalendar() {
+    const monthNames = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    
+    const monthYearElement = document.getElementById('calendar-month-year');
+    if (!monthYearElement) return;
+    
+    monthYearElement.textContent = 
+        `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+    
+    const firstDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
+    const lastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0);
+    const firstDayOfWeek = (firstDay.getDay() + 6) % 7;
+    
+    const daysContainer = document.getElementById('calendar-days');
+    if (!daysContainer) return;
+    
+    daysContainer.innerHTML = '';
+    
+    // Previous month days
+    const prevMonth = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 0);
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const day = prevMonth.getDate() - i;
+        const date = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), day);
+        const dayElement = createDayElement(day, 'other-month', date);
+        daysContainer.appendChild(dayElement);
+    }
+    
+    // Current month days
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const date = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), day);
+        const dayElement = createDayElement(day, '', date);
+        daysContainer.appendChild(dayElement);
+    }
+    
+    // Next month days to fill remaining cells
+    const totalCells = daysContainer.children.length;
+    const remainingCells = (42 - totalCells) % 7;
+    if (remainingCells > 0) {
+        const nextMonth = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
+        for (let day = 1; day <= remainingCells; day++) {
+            const date = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
+            const dayElement = createDayElement(day, 'other-month', date);
+            daysContainer.appendChild(dayElement);
+        }
+    }window.addTransaction = function() {
     const type = document.getElementById('type').value;
     const amount = parseFloat(document.getElementById('amount').value);
     const description = document.getElementById('description').value;
@@ -1030,7 +1685,24 @@ window.addAccount = function() {
     const icon = document.getElementById('new-account-icon').value;
     const balance = parseFloat(document.getElementById('new-account-balance').value) || 0;
 
-    if// Global variables
+    if// Make startApp function immediately available
+window.startApp = function() {
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    localStorage.setItem('welcome_shown', 'true');
+    
+    setTimeout(() => {
+        if (window.Telegram?.WebApp?.expand) {
+            window.Telegram.WebApp.expand();
+        }
+    }, 200);
+    
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+    }
+};
+
+// Global variables
 let tg = window.Telegram?.WebApp || {
     expand: () => {},
     ready: () => {},
@@ -1040,106 +1712,6 @@ let tg = window.Telegram?.WebApp || {
     CloudStorage: null,
     colorScheme: 'dark'
 };
-
-let transactions = [];
-let accounts = [];
-let categories = {
-    expense: {},
-    income: {}
-};
-let isLoading = false;
-let editingTransactionId = null;
-let editingAccountId = null;
-let editingCategoryId = null;
-let editingCategoryType = null;
-
-// Calendar variables
-let currentCalendarDate = new Date();
-let dateMode = 'single';
-let selectedDate = null;
-let selectedRange = { start: null, end: null };
-
-// Icon selection variables
-let selectedIcon = '📦';
-let isIconGridVisible = false;
-
-// Available icons for categories
-const availableIcons = [
-    // Food & Dining
-    '🍕', '🍔', '🍟', '🌭', '🥙', '🌮', '🌯', '🥗', '🍝', '🍜', 
-    '☕', '🧊', '🥤', '🍺', '🍷', '🥂',
-    
-    // Transportation
-    '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐',
-    '🛻', '🚚', '🚛', '🚜', '🏍️', '🛺', '🚲', '🛴', '🛹', '✈️',
-    '🚁', '⛵', '🚢', '⛽', '🚥', '🅿️',
-    
-    // Shopping & Money
-    '🛒', '🛍️', '💳', '💰', '💵', '💴', '💶', '💷', '💸', '🏪',
-    '🏬', '🏢', '🏭', '🏪', '🎪', '🎠', '🎡', '🎢',
-    
-    // Health & Medical  
-    '💊', '🏥', '⚕️', '🩺', '💉', '🩹', '🧬', '🔬', '🧪',
-    
-    // Education & Work
-    '📚', '📖', '📝', '✏️', '🖊️', '🖋️', '📄', '📃', '📑', '📊',
-    '💼', '👔', '🎓', '📐', '📏', '📌', '📍', '🖇️',
-    
-    // Entertainment & Sports
-    '🎬', '🎭', '🎪', '🎨', '🎯', '🎲', '🃏', '🎮', '🕹️', '🎸',
-    '🎵', '🎶', '🎤', '🎧', '📺', '📱', '💻', '⌚', '📷', '📹',
-    '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱',
-    '🏸', '🏓', '🏒', '🥍', '🏑', '🏏', '⛳', '🏹', '🎣', '🥊',
-    '🥋', '🎿', '⛷️', '🏂', '⛸️', '🤿', '🏊', '🚴', '🤸', '🏋️',
-    
-    // Home & Utilities
-    '🏠', '🏡', '🏘️', '🏰', '🏗️', '🔧', '🔨', '⚡', '🔌', '💡',
-    '🚿', '🛁', '🚽', '🪑', '🛏️', '🚪', '🪟', '🧹', '🧽', '🧴',
-    '🧯', '🔥', '❄️', '🌡️',
-    
-    // Beauty & Personal Care
-    '💄', '💅', '👄', '👁️', '🧴', '🪒', '🧼', '🧽', '🪥', '🦷',
-    '💇', '💆', '🧖', '💃', '🕺',
-    
-    // Bills & Services  
-    '📄', '🧾', '📋', '📊', '💳', '🏦', '🏢', '📞', '📡', '📺',
-    '💻', '🖥️', '⌨️', '🖱️', '🖨️', '📠', '☎️', '📱',
-    
-    // Generic & Symbols
-    '📦', '📋', '📌', '🏷️', '💼', '🎯', '⭐', '❤️', '💚', '💙',
-    '💛', '🧡', '💜', '🖤', '🤍', '🤎', '💗', '💝', '🎁', '🎀',
-    '🔶', '🔷', '🟢', '🔴', '🟡', '🟣', '🟠', '🔵', '⚫', '⚪',
-    '🟤', '🔺', '🔻', '💎', '⚡', '🌟', '✨', '🔥', '💫', '🌈'
-];
-
-// Initialize Telegram WebApp
-tg.expand();
-tg.ready();
-
-setTimeout(() => {
-    if (tg.expand) {
-        tg.expand();
-    }
-}, 100);
-
-// Set full height
-function setFullHeight() {
-    const vh = window.innerHeight;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-    document.body.style.minHeight = `${vh}px`;
-    document.body.style.height = `${vh}px`;
-}
-
-setFullHeight();
-window.addEventListener('resize', setFullHeight);
-
-// Default categories
-const defaultExpenseCategories = {
-    'food': { name: '🍕 Еда', icon: '🍕' },
-    'transport': { name: '🚗 Транспорт', icon: '🚗' }, 
-    'shopping': { name: '🛒 Покупки', icon: '🛒' },
-    'entertainment': { name: '🎬 Развлечения', icon: '🎬' },
-    'health': { name: '💊 Здоровье', icon: '💊' },
     'bills': { name: '📄 Счета', icon: '📄' },
     'education': { name: '📚 Образование', icon: '📚' },
     'sport': { name: '⚽ Спорт', icon: '⚽' },
