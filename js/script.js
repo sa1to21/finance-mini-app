@@ -1,4 +1,87 @@
-document.addEventListener("DOMContentLoaded", () => {
+// Применение фильтров
+    window.applyFilters = function() {
+        const periodFilter = document.getElementById('period-filter');
+        const categoryFilter = document.getElementById('category-filter');
+        const typeFilter = document.getElementById('type-filter');
+        const accountFilter = document.getElementById('account-filter');
+
+        if (!periodFilter || !categoryFilter || !typeFilter || !accountFilter) {
+            return;
+        }
+
+        let filteredTransactions = [...transactions];
+
+        // Фильтр по периоду
+        if (periodFilter.value !== 'all') {
+            const now = new Date();
+            let startDate, endDate;
+            
+            if (periodFilter.value === 'custom') {
+                const startInput = document.getElementById('start-date');
+                const endInput = document.getElementById('end-date');
+                
+                if (startInput.value && endInput.value) {
+                    startDate = new Date(startInput.value);
+                    endDate = new Date(endInput.value);
+                    endDate.setHours(23, 59, 59, 999); // Включаем весь день
+                }
+            } else if (periodFilter.value === 'single') {
+                const singleInput = document.getElementById('single-date-input');
+                
+                if (singleInput.value) {
+                    startDate = new Date(singleInput.value);
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate = new Date(singleInput.value);
+                    endDate.setHours(23, 59, 59, 999);
+                }
+            } else {
+                startDate = new Date();
+                switch (periodFilter.value) {
+                    case 'today':
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate = new Date();
+                        endDate.setHours(23, 59, 59, 999);
+                        break;
+                    case 'week':
+                        startDate.setDate(now.getDate() - 7);
+                        endDate = now;
+                        break;
+                    case 'month':
+                        startDate.setMonth(now.getMonth() - 1);
+                        endDate = now;
+                        break;
+                    case 'quarter':
+                        startDate.setMonth(now.getMonth() - 3);
+                        endDate = now;
+                        break;
+                }
+            }
+            
+            if (startDate && endDate) {
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const transactionDate = new Date(t.date);
+                    return transactionDate >= startDate && transactionDate <= endDate;
+                });
+            }
+        }
+
+        // Остальные фильтры
+        if (categoryFilter.value !== 'all') {
+            filteredTransactions = filteredTransactions.filter(t => t.category === categoryFilter.value);
+        }
+        
+        if (typeFilter.value !== 'all') {
+            filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter.value);
+        }
+        
+        if (accountFilter.value !== 'all') {
+            filteredTransactions = filteredTransactions.filter(t => 
+                t.account === accountFilter.value || t.fromAccount === accountFilter.value || t.toAccount === accountFilter.value
+            );
+        }
+
+        displayFilteredTransactions(filteredTransactions);
+    }document.addEventListener("DOMContentLoaded", () => {
     // Инициализация Telegram WebApp
     let tg = window.Telegram?.WebApp || {
         expand: () => {},
@@ -40,8 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let editingTransactionId = null;
     let editingAccountId = null;
 
-    // Категории с эмодзи
-    const expenseCategories = {
+    // Категории с эмодзи (теперь будут изменяемыми)
+    let expenseCategories = {
         'food': '🍕 Еда',
         'transport': '🚗 Транспорт', 
         'shopping': '🛒 Покупки',
@@ -55,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
         'other-expense': '📦 Прочее'
     };
 
-    const incomeCategories = {
+    let incomeCategories = {
         'salary': '💰 Зарплата',
         'freelance': '💻 Фрилан',
         'business': '🏢 Бизнес',
@@ -67,7 +150,190 @@ document.addEventListener("DOMContentLoaded", () => {
         'other-income': '💵 Прочее'
     };
 
-    const allCategories = {...expenseCategories, ...incomeCategories};
+    let allCategories = {...expenseCategories, ...incomeCategories};
+    let currentCategoryType = 'expense'; // для управления категориями
+
+    // Загрузка пользовательских категорий
+    function loadCustomCategories() {
+        const customExpense = localStorage.getItem('custom_expense_categories');
+        const customIncome = localStorage.getItem('custom_income_categories');
+        
+        if (customExpense) {
+            expenseCategories = JSON.parse(customExpense);
+        }
+        if (customIncome) {
+            incomeCategories = JSON.parse(customIncome);
+        }
+        
+        allCategories = {...expenseCategories, ...incomeCategories};
+    }
+
+    // Сохранение пользовательских категорий
+    function saveCustomCategories() {
+        localStorage.setItem('custom_expense_categories', JSON.stringify(expenseCategories));
+        localStorage.setItem('custom_income_categories', JSON.stringify(incomeCategories));
+        
+        // Также сохраняем в облако
+        if (tg.CloudStorage) {
+            tg.CloudStorage.setItem('custom_expense_categories', JSON.stringify(expenseCategories));
+            tg.CloudStorage.setItem('custom_income_categories', JSON.stringify(incomeCategories));
+        }
+    }
+
+    // Показать тип категорий
+    window.showCategoryType = function(type) {
+        currentCategoryType = type;
+        
+        // Обновляем активную вкладку
+        document.querySelectorAll('.category-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // Показываем нужный список
+        const expenseList = document.getElementById('expense-categories-list');
+        const incomeList = document.getElementById('income-categories-list');
+        
+        if (type === 'expense') {
+            expenseList.classList.remove('hidden');
+            incomeList.classList.add('hidden');
+            displayCategoriesList('expense');
+        } else {
+            expenseList.classList.add('hidden');
+            incomeList.classList.remove('hidden');
+            displayCategoriesList('income');
+        }
+    }
+
+    // Отображение списка категорий
+    function displayCategoriesList(type) {
+        const categories = type === 'expense' ? expenseCategories : incomeCategories;
+        const listId = type === 'expense' ? 'expense-categories-list' : 'income-categories-list';
+        const listElement = document.getElementById(listId);
+        
+        if (!listElement) return;
+        
+        const html = Object.entries(categories).map(([key, value]) => {
+            const [emoji, ...nameParts] = value.split(' ');
+            const name = nameParts.join(' ');
+            
+            // Не позволяем удалять системные категории "Прочее"
+            const canDelete = key !== 'other-expense' && key !== 'other-income';
+            
+            return `
+                <div class="category-list-item" data-key="${key}">
+                    <div class="category-info">
+                        <span class="category-emoji">${emoji}</span>
+                        <span class="category-name">${name}</span>
+                    </div>
+                    <div class="category-actions">
+                        <button class="category-edit-btn" onclick="editCategory('${type}', '${key}')">✏️</button>
+                        ${canDelete ? `<button class="category-delete-btn" onclick="deleteCategory('${type}', '${key}')">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        listElement.innerHTML = html;
+    }
+
+    // Добавить пользовательскую категорию
+    window.addCustomCategory = function() {
+        const name = document.getElementById('new-category-name').value.trim();
+        const emoji = document.getElementById('new-category-emoji').value.trim();
+        
+        if (!name) {
+            if (tg.showAlert) {
+                tg.showAlert('Введите название категории');
+            } else {
+                alert('Введите название категории');
+            }
+            return;
+        }
+        
+        const finalEmoji = emoji || (currentCategoryType === 'expense' ? '📌' : '💵');
+        const key = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+        const value = `${finalEmoji} ${name}`;
+        
+        if (currentCategoryType === 'expense') {
+            expenseCategories[key] = value;
+        } else {
+            incomeCategories[key] = value;
+        }
+        
+        allCategories = {...expenseCategories, ...incomeCategories};
+        saveCustomCategories();
+        displayCategoriesList(currentCategoryType);
+        updateCategories(); // Обновляем селекты
+        
+        // Очищаем форму
+        document.getElementById('new-category-name').value = '';
+        document.getElementById('new-category-emoji').value = '';
+        
+        showSyncStatus();
+        
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+    }
+
+    // Редактировать категорию
+    window.editCategory = function(type, key) {
+        const categories = type === 'expense' ? expenseCategories : incomeCategories;
+        const currentValue = categories[key];
+        const [emoji, ...nameParts] = currentValue.split(' ');
+        const name = nameParts.join(' ');
+        
+        const newName = prompt('Введите новое название категории:', name);
+        if (newName && newName.trim()) {
+            const newEmoji = prompt('Введите новый эмодзи (оставьте пустым для текущего):', emoji);
+            const finalEmoji = newEmoji && newEmoji.trim() ? newEmoji.trim() : emoji;
+            
+            categories[key] = `${finalEmoji} ${newName.trim()}`;
+            
+            allCategories = {...expenseCategories, ...incomeCategories};
+            saveCustomCategories();
+            displayCategoriesList(type);
+            updateCategories();
+            
+            showSyncStatus();
+            
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+    }
+
+    // Удалить категорию
+    window.deleteCategory = function(type, key) {
+        // Проверяем, используется ли категория в транзакциях
+        const hasTransactions = transactions.some(t => t.category === key);
+        
+        if (hasTransactions) {
+            if (tg.showAlert) {
+                tg.showAlert('Невозможно удалить категорию, так как она используется в операциях');
+            } else {
+                alert('Невозможно удалить категорию, так как она используется в операциях');
+            }
+            return;
+        }
+        
+        if (confirm('Удалить категорию?')) {
+            const categories = type === 'expense' ? expenseCategories : incomeCategories;
+            delete categories[key];
+            
+            allCategories = {...expenseCategories, ...incomeCategories};
+            saveCustomCategories();
+            displayCategoriesList(type);
+            updateCategories();
+            
+            showSyncStatus();
+            
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+    }
 
     // Показать статус синхронизации
     function showSyncStatus() {
@@ -329,8 +595,14 @@ document.addEventListener("DOMContentLoaded", () => {
     window.updatePeriodFilter = function() {
         const periodFilter = document.getElementById('period-filter');
         const customDateRange = document.getElementById('custom-date-range');
+        const singleDate = document.getElementById('single-date');
         const startDate = document.getElementById('start-date');
         const endDate = document.getElementById('end-date');
+        const singleDateInput = document.getElementById('single-date-input');
+        
+        // Скрываем все дополнительные поля
+        customDateRange.classList.add('hidden');
+        singleDate.classList.add('hidden');
         
         if (periodFilter.value === 'custom') {
             customDateRange.classList.remove('hidden');
@@ -343,8 +615,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 monthAgo.setMonth(monthAgo.getMonth() - 1);
                 startDate.value = monthAgo.toISOString().split('T')[0];
             }
-        } else {
-            customDateRange.classList.add('hidden');
+        } else if (periodFilter.value === 'single') {
+            singleDate.classList.remove('hidden');
+            if (!singleDateInput.value) {
+                const today = new Date().toISOString().split('T')[0];
+                singleDateInput.value = today;
+            }
         }
         
         applyFilters();
@@ -445,6 +721,8 @@ document.addEventListener("DOMContentLoaded", () => {
             displayStats();
         } else if (tabName === 'accounts') {
             displayAccounts();
+        } else if (tabName === 'settings') {
+            displayCategoriesList('expense');
         }
 
         if (tg.HapticFeedback) {
@@ -1308,7 +1586,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function setupFilterHandlers() {
         const filterElements = [
             'period-filter', 'category-filter', 'type-filter', 'account-filter',
-            'start-date', 'end-date'
+            'start-date', 'end-date', 'single-date-input'
         ];
         
         filterElements.forEach(id => {
@@ -1325,6 +1603,103 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Экспорт данных
+    window.exportData = function() {
+        const data = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            transactions: transactions,
+            accounts: accounts,
+            expenseCategories: expenseCategories,
+            incomeCategories: incomeCategories
+        };
+        
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `finance_backup_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '_')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        if (tg.showAlert) {
+            tg.showAlert('Данные экспортированы');
+        } else {
+            alert('Данные экспортированы');
+        }
+    }
+
+    // Импорт данных
+    window.importData = function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    
+                    // Проверяем структуру данных
+                    if (!data.version || !data.transactions || !data.accounts) {
+                        throw new Error('Неверный формат файла');
+                    }
+                    
+                    if (confirm('Это заменит все текущие данные. Продолжить?')) {
+                        // Импортируем данные
+                        transactions = data.transactions || [];
+                        accounts = data.accounts || [];
+                        
+                        if (data.expenseCategories) {
+                            expenseCategories = data.expenseCategories;
+                        }
+                        if (data.incomeCategories) {
+                            incomeCategories = data.incomeCategories;
+                        }
+                        
+                        allCategories = {...expenseCategories, ...incomeCategories};
+                        
+                        // Сохраняем всё
+                        saveData();
+                        saveCustomCategories();
+                        
+                        // Обновляем интерфейс
+                        updateAllBalances();
+                        updateCategories();
+                        updateFilters();
+                        applyFilters();
+                        displayAccounts();
+                        
+                        if (tg.showAlert) {
+                            tg.showAlert('Данные успешно импортированы');
+                        } else {
+                            alert('Данные успешно импортированы');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Ошибка импорта:', error);
+                    if (tg.showAlert) {
+                        tg.showAlert('Ошибка при импорте данных');
+                    } else {
+                        alert('Ошибка при импорте данных');
+                    }
+                }
+            };
+            
+            reader.readAsText(file);
+        };
+        
+        input.click();
+    }
+
     // Инициализация приложения
     async function init() {
         try {
@@ -1336,6 +1711,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (balanceElement) {
                 balanceElement.textContent = 'Загрузка...';
             }
+            
+            // Загружаем пользовательские категории
+            loadCustomCategories();
             
             // Загружаем данные из облака
             await loadFromCloud();
