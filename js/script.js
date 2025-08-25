@@ -69,9 +69,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const allCategories = {...expenseCategories, ...incomeCategories};
 
+    // Показать статус синхронизации
+    function showSyncStatus() {
+        const syncStatus = document.getElementById('sync-status');
+        if (syncStatus) {
+            syncStatus.classList.remove('hidden');
+            
+            // Автоматически скрыть через 2 секунды
+            setTimeout(() => {
+                syncStatus.classList.add('hidden');
+            }, 2000);
+        }
+    }
+
     // Telegram Cloud Storage функции
     function saveToCloud() {
         if (isLoading) return;
+        
+        // Показываем индикатор синхронизации
+        showSyncStatus();
         
         try {
             if (tg.CloudStorage) {
@@ -716,7 +732,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAllBalances();
         applyFilters();
         closeEditModal();
-        showSyncStatus();
 
         if (tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
@@ -811,7 +826,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAccountSelect();
         updateFilters();
         closeEditAccountModal();
-        showSyncStatus();
 
         if (tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
@@ -1082,7 +1096,6 @@ document.addEventListener("DOMContentLoaded", () => {
         saveData();
         updateAllBalances();
         applyFilters();
-        showSyncStatus();
         
         if (tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
@@ -1157,7 +1170,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAllBalances();
         displayAccounts();
         updateAccountSelect();
-        showSyncStatus();
 
         // Очищаем форму
         document.getElementById('new-account-name').value = '';
@@ -1205,7 +1217,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAllBalances();
         displayAccounts();
         updateAccountSelect();
-        showSyncStatus();
         
         if (tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
@@ -1286,12 +1297,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (accountsBreakdown) {
             accountsBreakdown.innerHTML = accountsHTML;
         }
-    }
-
-    // Показать статус синхронизации
-    function showSyncStatus() {
-        // Функция отключена - индикатор синхронизации убран
-        return;
     }
 
     // Форматирование валюты
