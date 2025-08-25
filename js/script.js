@@ -1,17 +1,38 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // Telegram WebApp initialization
-    let tg = window.Telegram?.WebApp || {
-        expand: () => {},
-        ready: () => {},
-        HapticFeedback: null,
-        showAlert: null,
-        showConfirm: null,
-        CloudStorage: null,
-        colorScheme: 'dark'
-    };
+// Telegram WebApp initialization - moved outside DOMContentLoaded
+let tg = window.Telegram?.WebApp || {
+    expand: () => {},
+    ready: () => {},
+    HapticFeedback: null,
+    showAlert: null,
+    showConfirm: null,
+    CloudStorage: null,
+    colorScheme: 'dark'
+};
+
+tg.expand();
+tg.ready();
+
+// Welcome screen - moved outside DOMContentLoaded for global access
+function startApp() {
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    localStorage.setItem('welcome_shown', 'true');
     
-    tg.expand();
-    tg.ready();
+    setTimeout(() => {
+        if (tg.expand) {
+            tg.expand();
+        }
+    }, 200);
+    
+    if (tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
+    }
+}
+
+// Make function globally accessible
+window.startApp = startApp;
+
+document.addEventListener("DOMContentLoaded", () => {
     
     setTimeout(() => {
         if (tg.expand) {
@@ -1456,23 +1477,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function saveData() {
         saveToCloud();
-    }
-
-    // Welcome screen
-    window.startApp = function() {
-        document.getElementById('welcome-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
-        localStorage.setItem('welcome_shown', 'true');
-        
-        setTimeout(() => {
-            if (tg.expand) {
-                tg.expand();
-            }
-        }, 200);
-        
-        if (tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('medium');
-        }
     }
 
     function checkWelcome() {
