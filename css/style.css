@@ -445,13 +445,114 @@ input:focus, select:focus, textarea:focus {
     margin-bottom: 12px;
 }
 
-#custom-date-range.hidden {
+#custom-date-range.hidden, #single-date.hidden {
     display: none;
 }
 
-#start-date, #end-date {
+#start-date, #end-date, #single-date-input {
     background: var(--tg-theme-bg-color, #0f0f23);
     color: var(--tg-theme-text-color, #ffffff);
+}
+
+/* Вкладки категорий */
+.category-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.category-tab {
+    flex: 1;
+    padding: 10px;
+    background: var(--tg-theme-bg-color, #0f0f23);
+    color: var(--tg-theme-hint-color, #999);
+    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.category-tab.active {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border-color: var(--tg-theme-button-color, #2481cc);
+}
+
+/* Список категорий */
+.categories-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    background: var(--tg-theme-bg-color, #0f0f23);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.category-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: var(--tg-theme-section-bg-color, #1a1a2e);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.category-list-item:last-child {
+    margin-bottom: 0;
+}
+
+.category-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.category-emoji {
+    font-size: 20px;
+}
+
+.category-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.category-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.category-edit-btn, .category-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.category-edit-btn {
+    color: var(--tg-theme-button-color, #2481cc);
+}
+
+.category-delete-btn {
+    color: #f44336;
+}
+
+.category-edit-btn:hover, .category-delete-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Форма добавления категории */
+.add-category-form {
+    background: var(--tg-theme-bg-color, #0f0f23);
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 20px;
 }
 
 /* Список операций */
