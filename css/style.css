@@ -17,7 +17,7 @@ body {
     margin: 0;
     height: 100vh;
     min-height: 100vh;
-    min-height: var(--vh, 100vh); /* Fallback для мобильных */
+    min-height: var(--vh, 100vh);
     overflow-x: hidden;
     position: relative;
 }
@@ -25,9 +25,9 @@ body {
 .container {
     max-width: 100%;
     padding: 16px;
-    min-height: calc(100vh - 80px); /* Отступ для фиксированного меню */
+    min-height: calc(100vh - 80px);
     min-height: calc(var(--vh, 100vh) - 80px);
-    padding-bottom: 100px; /* Увеличенный отступ для фиксированного меню */
+    padding-bottom: 100px;
 }
 
 /* Индикатор синхронизации */
@@ -204,7 +204,6 @@ body {
     display: flex;
     padding: 8px 0;
     z-index: 1000;
-    /* Добавляем безопасный отступ для устройств с выемкой */
     padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
@@ -297,7 +296,6 @@ input:focus, select:focus, textarea:focus {
     background: #f44336;
 }
 
-/* Стилизация кнопки "Назад" */
 .btn.back-btn {
     background: var(--tg-theme-section-bg-color, #1a1a2e) !important;
     color: var(--tg-theme-text-color, #ffffff) !important;
@@ -414,6 +412,121 @@ input:focus, select:focus, textarea:focus {
     }
 }
 
+/* Calendar styles */
+.calendar-container {
+    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+    border-radius: 8px;
+    background: var(--tg-theme-bg-color, #0f0f23);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.calendar-nav-btn {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.calendar-nav-btn:hover {
+    opacity: 0.8;
+}
+
+.calendar-month-year {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day-header {
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--tg-theme-hint-color, #999);
+}
+
+.calendar-day {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calendar-day:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.calendar-day.other-month {
+    color: var(--tg-theme-hint-color, #666);
+}
+
+.calendar-day.selected {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+.calendar-day.range-start, .calendar-day.range-end {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+.calendar-day.in-range {
+    background: rgba(36, 129, 204, 0.3);
+}
+
+.date-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.date-mode-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+    background: var(--tg-theme-section-bg-color, #1a1a2e);
+    color: var(--tg-theme-text-color, #ffffff);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.date-mode-btn.active {
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border-color: var(--tg-theme-button-color, #2481cc);
+}
+
+.date-mode-btn:hover {
+    opacity: 0.8;
+}
+
 /* Фильтры */
 .filters {
     background: var(--tg-theme-section-bg-color, #1a1a2e);
@@ -445,114 +558,17 @@ input:focus, select:focus, textarea:focus {
     margin-bottom: 12px;
 }
 
-#custom-date-range.hidden, #single-date.hidden {
+#custom-date-range.hidden {
     display: none;
 }
 
-#start-date, #end-date, #single-date-input {
+#calendar-date-range.hidden {
+    display: none;
+}
+
+#start-date, #end-date {
     background: var(--tg-theme-bg-color, #0f0f23);
     color: var(--tg-theme-text-color, #ffffff);
-}
-
-/* Вкладки категорий */
-.category-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-.category-tab {
-    flex: 1;
-    padding: 10px;
-    background: var(--tg-theme-bg-color, #0f0f23);
-    color: var(--tg-theme-hint-color, #999);
-    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.category-tab.active {
-    background: var(--tg-theme-button-color, #2481cc);
-    color: var(--tg-theme-button-text-color, #ffffff);
-    border-color: var(--tg-theme-button-color, #2481cc);
-}
-
-/* Список категорий */
-.categories-list {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 20px;
-    background: var(--tg-theme-bg-color, #0f0f23);
-    border-radius: 8px;
-    padding: 8px;
-}
-
-.category-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
-    background: var(--tg-theme-section-bg-color, #1a1a2e);
-    border-radius: 8px;
-    margin-bottom: 8px;
-}
-
-.category-list-item:last-child {
-    margin-bottom: 0;
-}
-
-.category-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-}
-
-.category-emoji {
-    font-size: 20px;
-}
-
-.category-name {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.category-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.category-edit-btn, .category-delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: all 0.3s;
-}
-
-.category-edit-btn {
-    color: var(--tg-theme-button-color, #2481cc);
-}
-
-.category-delete-btn {
-    color: #f44336;
-}
-
-.category-edit-btn:hover, .category-delete-btn:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-/* Форма добавления категории */
-.add-category-form {
-    background: var(--tg-theme-bg-color, #0f0f23);
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 20px;
 }
 
 /* Список операций */
@@ -560,8 +576,8 @@ input:focus, select:focus, textarea:focus {
     background: var(--tg-theme-section-bg-color, #1a1a2e);
     border-radius: 12px;
     overflow: hidden;
-    max-height: 60vh; /* Ограничиваем высоту списка */
-    overflow-y: auto; /* Добавляем прокрутку */
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 .transaction-item {
@@ -677,7 +693,6 @@ input:focus, select:focus, textarea:focus {
     color: #f44336;
 }
 
-/* Кнопки управления счетом */
 .account-actions {
     display: flex;
     gap: 8px;
@@ -742,8 +757,8 @@ input:focus, select:focus, textarea:focus {
     padding: 20px;
     border-radius: 12px;
     margin-bottom: 16px;
-    max-height: 300px; /* Ограничиваем высоту */
-    overflow-y: auto; /* Добавляем прокрутку */
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .category-item {
@@ -756,6 +771,80 @@ input:focus, select:focus, textarea:focus {
 
 .category-item:last-child {
     border-bottom: none;
+}
+
+/* Category management styles */
+.category-management {
+    background: var(--tg-theme-section-bg-color, #1a1a2e);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.category-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.category-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+}
+
+.category-row:last-child {
+    border-bottom: none;
+}
+
+.category-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--tg-theme-section-separator-color, #2a2a3a);
+    border-radius: 6px;
+    background: var(--tg-theme-bg-color, #0f0f23);
+    color: var(--tg-theme-text-color, #ffffff);
+    font-size: 14px;
+}
+
+.category-type {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 60px;
+    text-align: center;
+}
+
+.category-type.income {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.category-type.expense {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+.category-action-btn {
+    background: none;
+    border: none;
+    color: var(--tg-theme-hint-color, #999);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.category-action-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.category-action-btn.delete {
+    color: #f44336;
 }
 
 .hidden {
